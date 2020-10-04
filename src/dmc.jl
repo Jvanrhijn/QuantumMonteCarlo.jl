@@ -49,6 +49,10 @@ function run_dmc!(model, walkers, τ, num_blocks, steps_per_block, eref; rng=Mer
                 end
             end
 
+            if accumulator != Nothing
+                average_ensemble!(accumulator)
+            end
+
             ensemble_energy = mean(local_energy_ensemble, Weights(weight_ensemble))
 
             block_energy[b] = ensemble_energy
@@ -59,6 +63,10 @@ function run_dmc!(model, walkers, τ, num_blocks, steps_per_block, eref; rng=Mer
             end
 
         end
+
+        if accumulator != Nothing
+            average_block!(accumulator)
+        end 
 
         block_energy = mean(block_energy, Weights(block_weight))
         block_weight = sum(block_weight)
