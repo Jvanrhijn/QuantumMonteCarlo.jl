@@ -1,27 +1,37 @@
 using Random
 
 
-# TODO: make this an Iterator?
-function accept_reject_diffuse!(ψ, τ, ψ_status, x, rng::AbstractRNG)
-    ∇ψ = ψ_status.gradient
-    ψval = ψ_status.value
+function diffuse_walker!(walker, ψ, rng::AbstractRNG)
+    ∇ψ = walker.ψstatus.gradient
+    ψval = walker.ψstatus.value
     drift = ∇ψ/ψval
+
+    x = walker.configuration
     
-    xprop = x .+ drift*τ .+ sqrt(τ)*randn(rng, Float64, size(x))
+    x′ = x .+ drift*τ .+ sqrt(τ)*randn(rng, Float64, size(x))
     
-    ψval_prop = ψ.value(xprop)
-    ∇ψ_prop = ψ.gradient(xprop)
-    drift_prop = ∇ψ_prop / ψval_prop
+    ψval′ = ψ.value(x′)
+    ∇ψ′ = ψ.gradient(x′)
+    drift′ = ∇ψ′ / ψval′
     
-    denom = exp.(-norm(xprop .- x .- drift*τ)^2/(2.0τ))
-    num = exp.(-norm(x .- xprop .- drift_prop*τ)^2/(2.0τ))
+    denom = exp.(-norm(x′ .- x .- drift*τ)^2/(2.0τ))
+    num = exp.(-norm(x .- x′ .- drift′*τ)^2/(2.0τ))
     
-    acceptance = min(1.0, ψval_prop^2 / ψval^2 * num / denom)
+    acceptance = min(1.0, ψval′^2 / ψval^2 * num / denom)
+
+    if ψval′ == 0.0 || sign(ψval′) != sign(ψval)
+        acceptance = 0.0
+    end
     
     if acceptance > rand(rng, Float64)
-        ψ_status.value = ψval_prop
-        ψ_status.gradient = ∇ψ_prop
-        ψ_status.laplacian = ψ.laplacian(xprop)
-        x .= xprop
+        walker.ψstatus_old.value = ψval
+        walker.ψstatus_old.gradient .= ∇ψ
+        walker.ψstatus_old.laplacian = walker.ψstatus.laplacian
+        walker.configuration_old .= x
+
+        walker.ψstatus.value = ψval′
+        walker.ψstatus.gradient .= ∇ψ′
+        walker.ψstatus.laplacian = ψ.laplacian(x′)
+        walker.configuration .= x′
     end
 end

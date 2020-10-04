@@ -4,7 +4,7 @@ function gradient_fd(f, x; dx=1e-5)
     for i = 1:dim
         dxx = zeros(dim)
         dxx[i] = dx
-        out[i] = (f(x + dxx) - f(x - dxx)) / (2.0*dx)
+        out[i] = (f(x .+ dxx) - f(x .- dxx)) ./ (2.0*dx)
     end
     out
 end
@@ -16,7 +16,7 @@ function laplacian_fd(f, x; dx=1e-5)
     for i = 1:dim
         dxx = zeros(dim)
         dxx[i] = dx
-        out += (f(x + dxx) -2.0val + f(x - dxx)) / dx^2
+        out += (f(x .+ dxx) - 2.0val + f(x .- dxx)) / dx^2
     end
     out
 end
