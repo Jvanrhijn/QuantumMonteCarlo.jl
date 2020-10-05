@@ -6,7 +6,7 @@ end
 
 mutable struct WaveFunctionStatus
     value::Float64
-    gradient::AbstractArray
+    gradient::Array{Float64}
     laplacian::Float64
 end
 

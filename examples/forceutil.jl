@@ -1,6 +1,13 @@
 # All functions needed for calculating forces
 function local_energy(fwalker, model, eref)
-    hamiltonian(fwalker.walker.ψstatus, fwalker.walker.configuration) / fwalker.walker.ψstatus.value
+    ψstatus = fwalker.walker.ψstatus
+    x = fwalker.walker.configuration
+    model.hamiltonian(ψstatus, x) / ψstatus.value
+end
+
+function local_energy_sec(fwalker, model, eref, ψ′)
+    x = fwalker.walker.configuration
+    model.hamiltonian_recompute(ψ′, x) / ψ′.value(x)
 end
 
 function cutoff_tanh(d; a=0.1)
@@ -22,10 +29,8 @@ function node_warp(x, ψ, ∇ψ, ψ′, ∇ψ′)
 end
 
 function gradel(fwalker, model, eref, ψ′)
-    walker = fwalker.walker
-    x = walker.configuration
-    el = model.hamiltonian(walker.ψstatus, x) / walker.ψstatus.value
-    el′ = hamiltonian_recompute(ψ′, x) / ψ′.value(x)
+    el = fwalker.data["Local energy"]
+    el′ = fwalker.data["Local energy (secondary)"]
     (el′ - el) / da
 end
 
@@ -38,7 +43,8 @@ function gradel_warp(fwalker, model, eref, ψt′)
     x = walker.configuration
     xwarp, jac = node_warp(x, ψ, ∇ψ, ψ′, ∇ψ′)
 
-    el = model.hamiltonian(walker.ψstatus, x) / ψ
+    #el = model.hamiltonian(walker.ψstatus, x) / ψ
+    el = last(fwalker.data["Local energy"])
     el′ = model.hamiltonian_recompute(ψt′, xwarp) / ψt′.value(xwarp)
     (el′ - el) / da
 end
@@ -51,7 +57,15 @@ function gradpsi_sec(fwalker, model, eref, ψ′)
     ψ′.gradient(fwalker.walker.configuration)
 end
 
-function psi_sec_prev(fwalker, model, eref, ψ′)
+function psi_sec(fwalker, model, eref, ψ′)
+    ψ′.value(fwalker.walker.configuration_old)
+end
+
+function gradpsi_sec_old(fwalker, model, eref, ψ′)
+    ψ′.gradient(fwalker.walker.configuration_old)
+end
+
+function psi_sec_old(fwalker, model, eref, ψ′)
     ψ′.value(fwalker.walker.configuration_old)
 end
 
@@ -65,8 +79,8 @@ function grads(fwalker, model, eref, ψ′, τ)
     xprev = fwalker.walker.configuration_old
     el_prev = model.hamiltonian(walker.ψstatus_old, xprev) / walker.ψstatus_old.value
     el_prev′ = model.hamiltonian_recompute(ψ′, xprev) / ψ′.value(xprev)
-    ∇ₐel_prev = (el_prev′ - el_prev) / da
-    return -0.5 * (∇ₐel + ∇ₐel_prev) * τ
+    ∇ₐel_prev = (el_prev′ .- el_prev) / da
+    return -0.5 * (∇ₐel .+ ∇ₐel_prev) * τ
 end
 
 function grads_warp(fwalker, model, eref, ψt′, τ)

@@ -6,7 +6,7 @@ using HDF5
 
 
 function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng=MersenneTwister(0), neq=0, outfile=Nothing)
-    nwalkers = length(fat_walkers)
+    const nwalkers = length(fat_walkers)
 
     accumulator = Accumulator(fat_walkers)
 

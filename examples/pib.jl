@@ -15,15 +15,20 @@ const da = 1e-5
 include("forceutil.jl")
 
 # DMC settings
-nwalkers = 100
-num_blocks = 400
+nwalkers = 10
+num_blocks = 100
 steps_per_block = 100
 neq = 10
 τ = 1e-2
 
 # Trial wave function
-ψpib(x) = max(0, x[1].*(a .- x[1]))
-ψpib′(x) = max(0, x[1].*(a + da .- x[1]))
+function ψpib(x::Array{Float64})
+    max(0, x[1].*(a .- x[1]))
+end
+
+function ψpib′(x::Array{Float64})
+    max(0, x[1].*(a + da .- x[1]))
+end
 
 ψtrial = WaveFunction(
     ψpib,
@@ -48,50 +53,52 @@ model = Model(
 )
 
 
+# TODO: fix the time spent in iterating over dicts
 # Observables needed for force computation
 observables = OrderedDict(
+    "Local energy" => local_energy,
+    "Local energy (secondary)" => (fwalker, model, eref) -> local_energy_sec(fwalker, model, eref, ψtrial′),
     "ψ′" => (fwalker, model, eref) -> psi_sec(fwalker, model, eref, ψtrial′),
     "∇ψ′" => (fwalker, model, eref) -> gradpsi_sec(fwalker, model, eref, ψtrial′),
-    "ψ′_old" => (fwalker, model, eref) -> psi_sec(fwalker, model, eref, ψtrial′),
-    "∇ψ′_old" => (fwalker, model, eref) -> gradpsi_sec(fwalker, model, eref, ψtrial′),
-    "Local energy" => local_energy,
-    "grad el" => (fwalker, model, eref) -> gradel(fwalker, model, eref, ψtrial′),
-    "grad el (warp)" => (fwalker, model, eref) -> gradel_warp(fwalker, model, eref, ψtrial′),
-    "grad log psi" => grad_logpsi,
-    "grad log psi (warp)" => (fwalker, model, eref) -> grad_logpsi_warp(fwalker, model, eref, ψtrial′),
-    "grad s" => (fwalker, model, eref) -> grads(fwalker, model, eref, ψtrial′, τ),
-    "grad t" => (fwalker, model, eref) -> gradt(fwalker, model, eref, ψtrial′, τ),
-    "grad s (warp)" => (fwalker, model, eref) -> grads_warp(fwalker, model, eref, ψtrial′, τ),
-    "grad t (warp)" => (fwalker, model, eref) -> gradt_warp(fwalker, model, eref, ψtrial′, τ),
-    "grad log j" => gradj,
-    "sum grad log j" => gradj,
+    #"ψ′_old" => (fwalker, model, eref) -> psi_sec_old(fwalker, model, eref, ψtrial′),
+    #"∇ψ′_old" => (fwalker, model, eref) -> gradpsi_sec_old(fwalker, model, eref, ψtrial′),
+    #"grad el" => (fwalker, model, eref) -> gradel(fwalker, model, eref, ψtrial′),
+    #"grad el (warp)" => (fwalker, model, eref) -> gradel_warp(fwalker, model, eref, ψtrial′),
+    #"grad log psi" => grad_logpsi,
+    #"grad log psi (warp)" => (fwalker, model, eref) -> grad_logpsi_warp(fwalker, model, eref, ψtrial′),
+    #"grad s" => (fwalker, model, eref) -> grads(fwalker, model, eref, ψtrial′, τ),
+    #"grad t" => (fwalker, model, eref) -> gradt(fwalker, model, eref, ψtrial′, τ),
+    #"grad s (warp)" => (fwalker, model, eref) -> grads_warp(fwalker, model, eref, ψtrial′, τ),
+    #"grad t (warp)" => (fwalker, model, eref) -> gradt_warp(fwalker, model, eref, ψtrial′, τ),
+    #"grad log j" => gradj,
+    #"sum grad log j" => gradj,
 )
 
 rng = MersenneTwister(0)
 
 # create "Fat" walkers
-walkers = QuantumMonteCarlo.generate_walkers(nwalkers, ψtrial, rng, Uniform(0., 1.), (1, 1))
+walkers = QuantumMonteCarlo.generate_walkers(nwalkers, ψtrial, rng, Uniform(0., 1.), 1)
 
 #fat_walkers = [QuantumMonteCarlo.FatWalker(walker, OrderedDict()) for walker in walkers]
 fat_walkers = [QuantumMonteCarlo.FatWalker(
     walker, 
     observables, 
     OrderedDict(
-        "grad s" => CircularBuffer(steps_per_block),
-        "grad t" => CircularBuffer(steps_per_block),
-        "grad s (warp)" => CircularBuffer(steps_per_block),
-        "grad t (warp)" => CircularBuffer(steps_per_block),
-        "sum grad log j" => CircularBuffer(steps_per_block)
+        #"grad s" => CircularBuffer(steps_per_block),
+        #"grad t" => CircularBuffer(steps_per_block),
+        #"grad s (warp)" => CircularBuffer(steps_per_block),
+        #"grad t (warp)" => CircularBuffer(steps_per_block),
+        #"sum grad log j" => CircularBuffer(steps_per_block)
     ),
     [
-        ("Local energy", "grad log psi"),
-        ("Local energy", "grad log psi (warp)"),
-        ("Local energy", "grad s"),
-        ("Local energy", "grad t"),
-        ("Local energy", "grad s (warp)"),
-        ("Local energy", "grad t (warp)"),
-        ("Local energy", "grad log j"),
-        ("Local energy", "sum grad log j"),
+        #("Local energy", "grad log psi"),
+        #("Local energy", "grad log psi (warp)"),
+        #("Local energy", "grad s"),
+        #("Local energy", "grad t"),
+        #("Local energy", "grad s (warp)"),
+        #("Local energy", "grad t (warp)"),
+        #("Local energy", "grad log j"),
+        #("Local energy", "sum grad log j"),
     ]
     ) for walker in walkers
 ]
@@ -106,7 +113,7 @@ energies, errors = QuantumMonteCarlo.run_dmc!(
     5.0; 
     rng=rng, 
     neq=neq, 
-    outfile="test.hdf5"
+    #outfile="test.hdf5"
 )
 
 
@@ -139,7 +146,7 @@ println("Energy: $(last(energies)) +- $(last(errors))")
 #plot!((flhf_warp + flpvd_warp)[2:end])
 #display(p1)
 #
-p2 = plot(energies, ribbon=(errors, errors), fillalpha=0.2, reuse=false)
-hline!([5], color="black")
-hline!([pi^2/2], color="black")
-display(p2)
+#p2 = plot(energies, ribbon=(errors, errors), fillalpha=0.2, reuse=false)
+#hline!([5], color="black")
+#hline!([pi^2/2], color="black")
+#display(p2)
