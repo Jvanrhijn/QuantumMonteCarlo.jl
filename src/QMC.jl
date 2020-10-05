@@ -18,7 +18,7 @@ num_blocks = 100
 steps_per_block = 100
 neq = 10
 
-τ = 1e-2
+τ = .5e-2
 
 ψpib(x) = max(0, x[1].*(a .- x[1]))
 ψpib′(x) = max(0, x[1].*(a + da .- x[1]))
@@ -161,7 +161,7 @@ function gradt(fwalker, model, eref)
     return (t' - t) / da
 end
 
-function gradt(fwalker, model, eref)
+function gradt_warp(fwalker, model, eref)
     walker = fwalker.walker
 
     x = walker.configuration
@@ -195,6 +195,22 @@ function gradt(fwalker, model, eref)
     return (t' - t) / da
 end
 
+function gradj(fwalker, model, eref)
+    walker = fwalker.walker
+
+    x = walker.configuration
+
+    ψ = walker.ψstatus.value
+    ∇ψ = walker.ψstatus.gradient
+
+    ψ′ = last(fwalker.data["ψ′"])
+    ∇ψ′ = last(fwalker.data["∇ψ′"])
+
+    _, jac = node_warp(x, ψ, ∇ψ, ψ′, ∇ψ′)
+
+    return log(abs(jac)) / da
+end
+
 observables = OrderedDict(
     "ψ′" => psi_sec,
     "∇ψ′" => gradpsi_sec,
@@ -207,7 +223,9 @@ observables = OrderedDict(
     "grad s" => grads,
     "grad t" => gradt,
     "grad s (warp)" => grads_warp,
-    "grad t (warp)" => gradt,
+    "grad t (warp)" => gradt_warp,
+    "grad log j" => gradj,
+    "sum grad log j" => gradj,
 )
 
 walkers = generate_walkers(nwalkers, ψtrial, rng, Uniform(0., 1.), (1, 1))
@@ -228,6 +246,8 @@ fat_walkers = [FatWalker(
         "grad t" => CircularBuffer(steps_per_block),
         "grad s (warp)" => CircularBuffer(steps_per_block),
         "grad t (warp)" => CircularBuffer(steps_per_block),
+        "grad log j" => CircularBuffer(1),
+        "sum grad log j" => CircularBuffer(steps_per_block)
     ),
     [
         ("Local energy", "grad log psi"),
@@ -235,6 +255,8 @@ fat_walkers = [FatWalker(
         ("Local energy", "grad t"),
         ("Local energy", "grad s (warp)"),
         ("Local energy", "grad t (warp)"),
+        ("Local energy", "grad log j"),
+        ("Local energy", "sum grad log j"),
     ]
     ) for walker in walkers]
 
@@ -267,10 +289,20 @@ fvd, fexact = h5open("test.hdf5", "r") do file
     ∇ₐt = read(file, "grad t (warp)")
     el∇ₐt = read(file, "Local energy * grad t (warp)")
 
+    ∇ₐlogj = read(file, "grad log j")
+    Σ∇ₐlogj = read(file, "sum grad log j")
+
+    el∇ₐlogj = read(file, "Local energy * grad log j")
+    elΣ∇ₐlogj = read(file, "Local energy * sum grad log j")
+
     energy = mean(els, Weights(ws))
 
-    fvd = mean(-(∇ₐel .+ 2.0(el∇ₐlogψ .- energy*∇ₐlogψ) .+ el∇ₐs .- energy*∇ₐs), Weights(ws))
-    fexact = mean(-(∇ₐel .+ el∇ₐt - energy*∇ₐt .+ el∇ₐs .- energy*∇ₐs), Weights(ws))
+    fvd = mean(-(∇ₐel .+ 2.0(el∇ₐlogψ .- energy*∇ₐlogψ) .+ 
+                                el∇ₐs .- energy*∇ₐs .+ 
+                                el∇ₐlogj - energy*∇ₐlogj), Weights(ws))
+    fexact = mean(-(∇ₐel .+ el∇ₐt - energy*∇ₐt .+ 
+                            el∇ₐs .- energy*∇ₐs .+
+                            elΣ∇ₐlogj - energy*Σ∇ₐlogj), Weights(ws))
 
     return fvd, fexact
 end
