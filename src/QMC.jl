@@ -37,12 +37,12 @@ model = Model(
     ψtrial,
 )
 
-nwalkers = 100
-num_blocks = 400
+nwalkers = 1
+num_blocks = 1000
 steps_per_block = 100
 neq = 10
 
-τ = .5e-2
+τ = 1e-2
 
 rng = MersenneTwister(134)
 
@@ -54,16 +54,40 @@ function elgrad(ψ, walker)
     return (el′ - el) / da
 end
 
+function logpsigrad(ψ, walker)
+    logψ = log(abs(walker.ψstatus.value))
+    logψ′ = log(abs(ψtrial′.value(walker.configuration)))
+    
+    (logψ′ - logψ) / da
+end
+
+#mutable struct ForceData
+#    ∇ₐel::Float64
+#    ∇ₐlogψ::Float64
+#    el∇ₐlogψ::Float64
+#end
+
 observables = Dict(
     "Local energy" => (ψ, walker) -> hamiltonian(ψ, walker.ψstatus, walker.configuration) / walker.ψstatus.value,
-    "ψ" => (ψ, walker) ->  walker.ψstatus.value,
-    "∇ψ" => (ψ, walker) -> walker.ψstatus.gradient,
-    "∇ₐel" => elgrad
+    "grad_a E_L" => elgrad,
+    "grad_a log Psi" => logpsigrad,
+    "E_L * grad_a log Psi" => (ψ, walker) -> hamiltonian(ψ, walker.ψstatus, walker.configuration) / walker.ψstatus.value * logpsigrad(ψ, walker),
+    "grad_a log Jacobian" => (_, _) -> 0.0,
+    "E_L * grad_a log Jacobian" => (_, _) -> 0.0,
+    "grad_a E_L (warp)" => elgrad,
+    "grad_a log Psi (warp)" => logpsigrad,
+    "E_L * grad_a log Psi (warp)" => (ψ, walker) -> hamiltonian(ψ, walker.ψstatus, walker.configuration) / walker.ψstatus.value * logpsigrad(ψ, walker),
 )
 
+# IDEA: one field of accumulator should be a function
+# that determines how observables are collected.
+# The default will just be a loop over the dictionary of
+# observable functions,
+# for forces it will be more complicated
+# First, let's do the HDF5 storage thing
 accumulator = Accumulator(observables)
 
-energies, errors = run_dmc!(model, walkers, τ, num_blocks, steps_per_block, 5.0; rng=rng, neq=neq, accumulator=accumulator)
+energies, errors = run_dmc!(model, walkers, τ, num_blocks, steps_per_block, 5.0; rng=rng, neq=neq, accumulator=accumulator, outfile="test.hdf5")
 
 print("$(last(energies)) +- $(last(errors))")
 

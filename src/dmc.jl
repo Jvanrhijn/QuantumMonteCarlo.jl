@@ -2,9 +2,10 @@ using Random
 using StatsBase
 using LinearAlgebra
 using ProgressMeter
+using HDF5
 
 
-function run_dmc!(model, walkers, τ, num_blocks, steps_per_block, eref; rng=MersenneTwister(0), neq=0, accumulator=Nothing)
+function run_dmc!(model, walkers, τ, num_blocks, steps_per_block, eref; rng=MersenneTwister(0), neq=0, accumulator=Nothing, outfile=Nothing)
     nwalkers = length(walkers)
 
     energy_estimate = zeros(num_blocks + 1)
@@ -13,6 +14,11 @@ function run_dmc!(model, walkers, τ, num_blocks, steps_per_block, eref; rng=Mer
     energy_estimate[1] = eref
 
     total_weight = nwalkers * steps_per_block
+
+    # open output file
+    if outfile != Nothing
+        file = h5open(outfile, "w")
+    end
 
     @showprogress for j = 1:(num_blocks + neq)
 
@@ -45,7 +51,7 @@ function run_dmc!(model, walkers, τ, num_blocks, steps_per_block, eref; rng=Mer
                 # TODO: allow accumulation of arbitrary observables
                 # obtainable from ψstatus
                 if accumulator != Nothing
-                    accumulate_observables!(walker, model, accumulator)
+                    accumulator.accumulate_observables!(walker, model, accumulator)
                 end
             end
 
@@ -66,6 +72,9 @@ function run_dmc!(model, walkers, τ, num_blocks, steps_per_block, eref; rng=Mer
 
         if accumulator != Nothing
             average_block!(accumulator)
+            if outfile != Nothing
+                write_to_file!(accumulator, file)
+            end
         end 
 
         block_energy = mean(block_energy, Weights(block_weight))
@@ -93,6 +102,10 @@ function run_dmc!(model, walkers, τ, num_blocks, steps_per_block, eref; rng=Mer
 
         end
 
+    end
+
+    if outfile != Nothing
+        close(file)
     end
 
     return energy_estimate, error_estimate

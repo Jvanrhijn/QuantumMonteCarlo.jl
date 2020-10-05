@@ -3,6 +3,7 @@
 # observables during a DMC run.
 using DataStructures
 using StatsBase
+using HDF5
 
 
 mutable struct Accumulator
@@ -10,8 +11,9 @@ mutable struct Accumulator
     ensemble_data::Dict
     block_data::Dict
     block_averages::Dict
+    accumulate_observables!::Function
 
-    function Accumulator(observables)  
+    function Accumulator(observables, accumulate_observables!)  
         ensemble_data = Dict()
         block_data = Dict()
         block_averages = Dict()
@@ -28,11 +30,14 @@ mutable struct Accumulator
         block_data["Weight"] = []
         block_averages["Weight"] = []
 
-        new(observables, ensemble_data, block_data, block_averages)
+        new(observables, ensemble_data, block_data, block_averages, accumulate_observables!)
     end
+
+    Accumulator(observables) = Accumulator(observables, accumulate_observables_default!)
+
 end
 
-function accumulate_observables!(walker, model, accumulator)
+function accumulate_observables_default!(walker, model, accumulator)
     for (key, value) in accumulator.observables
         val = value(model.wave_function, walker)
         push!(accumulator.ensemble_data[key], val)
@@ -82,5 +87,27 @@ function average_block!(accumulator)
         accumulator.block_data[key] = []
     end
     accumulator.block_data["Weight"] = []
+
+end
+
+function write_to_file!(accumulator, file)
+    g = root(file)
+    for (key, value) in accumulator.block_averages
+        # if dataset doesn't exist yet, create it
+        if !exists(g, key)
+            d_create(g, key, Float64, ((1, size(value)...), (-1, size(value)...)), "chunk", (1,size(value)...))
+        end
+        dset = d_open(g, key)
+        dim = size(dset)
+        new_dim = (dim[1]+1, dim[2:end]...)
+        set_dims!(dset, new_dim)
+        dset[end, :] = value[:]
+    end
+
+    accumulator.block_averages = Dict()
+    for (key, _) in accumulator.observables
+        accumulator.block_averages[key] = []
+    end
+    accumulator.block_averages["Weight"] = []
 
 end
