@@ -34,12 +34,12 @@ function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng
             # TODO thread-safe parallelism
             for (i, fwalker) in collect(enumerate(fat_walkers))
                 walker = fwalker.walker
-                el = model.hamiltonian(model.wave_function, walker.ψstatus, walker.configuration) / walker.ψstatus.value
+                el = model.hamiltonian(walker.ψstatus, walker.configuration) / walker.ψstatus.value
 
                 # perform drift-diffuse step
-                diffuse_walker!(walker, model.wave_function, rng)
+                diffuse_walker!(walker, model.wave_function, τ, rng)
 
-                el′ = model.hamiltonian(model.wave_function, walker.ψstatus, walker.configuration) / walker.ψstatus.value
+                el′ = model.hamiltonian(walker.ψstatus, walker.configuration) / walker.ψstatus.value
 
                 # compute branching factor                
                 s = (eref - 0.5*(el + el′)) * τ
@@ -85,7 +85,7 @@ function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng
         block_weight = sum(block_weight)
 
         # perform branching
-        stochastic_reconfiguration!(walkers, rng)
+        stochastic_reconfiguration!(fat_walkers, rng)
 
         # only update energy esimate after block has run
         if j > neq

@@ -70,7 +70,6 @@ function average_ensemble!(fat_walkers, accumulator)
         push!(accumulator.block_data[key], mean(value, Weights(weights)))
     end
 
-
     push!(accumulator.block_data["Weight"], total_weight)
 end
 
@@ -84,8 +83,8 @@ function average_block!(accumulator)
     
     accumulator.block_averages["Weight"] = total_weight
 
-    reset_collection!(accumulator.block_data, accumulator)
-
+    ks = keys(accumulator.block_data)
+    accumulator.block_data = OrderedDict(k => [] for k in ks)
 end
 
 function write_to_file!(accumulator, file)
@@ -102,10 +101,11 @@ function write_to_file!(accumulator, file)
         dset[end] = value
     end
 
-    reset_collection!(accumulator.block_averages, accumulator)
+    ks = keys(accumulator.block_averages)
+    accumulator.block_averages = OrderedDict(k => 0.0 for k in ks)
 end
 
-function reset_collection!(collection, accumulator)
+function reset_collection!(collection)
     ks = keys(collection)
-    collection = OrderedDict(k => [] for k in ks)
+    OrderedDict(k => [] for k in ks)
 end

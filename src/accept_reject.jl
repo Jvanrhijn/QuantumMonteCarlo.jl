@@ -1,7 +1,7 @@
 using Random
 
 
-function diffuse_walker!(walker, ψ, rng::AbstractRNG)
+function diffuse_walker!(walker, ψ, τ, rng::AbstractRNG)
     ∇ψ = walker.ψstatus.gradient
     ψval = walker.ψstatus.value
     drift = ∇ψ/ψval

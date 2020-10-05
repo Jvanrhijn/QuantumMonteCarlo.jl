@@ -27,16 +27,24 @@ mutable struct FatWalker
     # including everything
     function FatWalker(walker, observables, data, covs)
         data["Weight"] = CircularBuffer(1)
+        data_keys = keys(data)
+        # only need to add buffers that are not
+        # already given
+        for (key, value) in observables
+            if !(key in data_keys)
+                data[key] = CircularBuffer(1)
+            end
+        end
         new(walker, observables, data, covs)
     end
 
     # no covariances
-    function FatWalker(walker, observables, data) 
+    function FatWalker(walker, observables, data::Dict{String, CircularBuffer}) 
         FatWalker(walker, observables, data, [])
     end
 
     # no histories
-    function  FatWalker(walker, observables, covs)
+    function  FatWalker(walker, observables, covs::Array{Tuple{String, String}})
         data = OrderedDict()
         for (k, v) in observables
             data[k] = CircularBuffer(1)
@@ -45,8 +53,11 @@ mutable struct FatWalker
         new(walker, observables, data, covs)
     end
 
+    # only observables
+    FatWalker(walker, observables) = FatWalker(walker, observables, Tuple{String, String}[])
+
     # nothing
-    FatWalker(walker, observables) = FatWalker(walker, observables, [])
+    FatWalker(walker) = FatWalker(walker, OrderedDict{String, Function}())
 end
 
 function accumulate_observables!(fwalker, model, eref)
