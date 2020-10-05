@@ -10,10 +10,15 @@ include("accumulator.jl")
 using Distributions
 using Plots
 
-
 const a = 1.0
 const da = 1e-5
 
+nwalkers = 25
+num_blocks = 100
+steps_per_block = 100
+neq = 10
+
+τ = 1e-2
 
 ψpib(x) = max(0, x[1].*(a .- x[1]))
 ψpib′(x) = max(0, x[1].*(a + da .- x[1]))
@@ -37,59 +42,77 @@ model = Model(
     ψtrial,
 )
 
-nwalkers = 1
-num_blocks = 1000
-steps_per_block = 100
-neq = 10
-
-τ = 1e-2
-
 rng = MersenneTwister(134)
+
+local_energy(fwalker, model, eref) = hamiltonian(model.wave_function, fwalker.walker.ψstatus, fwalker.walker.configuration) / fwalker.walker.ψstatus.value
+
+function gradel(fwalker, model, eref)
+    walker = fwalker.walker
+    el = local_energy(fwalker, model, eref)
+    el′ = -0.5 * ψtrial′.laplacian(walker.configuration) / ψtrial′.value(walker.configuration)
+    (el′ - el) / da
+end
+
+function grads(fwalker, model, eref)
+    ∇ₐel = last(fwalker.data["grad el"])
+    xprev = fwalker.walker.configuration_old
+    el_prev = -0.5 * fwalker.walker.ψstatus_old.laplacian / fwalker.walker.ψstatus_old.value
+    el_prev′ = -0.5 * ψtrial′.laplacian(xprev) / ψtrial′.value(xprev)
+    ∇ₐel_prev = (el_prev′ - el_prev) / da
+    return -0.5 * (∇ₐel + ∇ₐel_prev) * τ
+end
+
+observables = OrderedDict(
+    "Local energy" => local_energy,
+    "grad el" => gradel,
+    "grad log psi" => (fwalker, model, _) -> (log(abs(ψtrial′.value(fwalker.walker.configuration))) - log(abs(ψtrial.value(fwalker.walker.configuration)))) / da,
+    "grad s" => grads,
+)
 
 walkers = generate_walkers(nwalkers, ψtrial, rng, Uniform(0., 1.), (1, 1))
 
-function elgrad(ψ, walker)
-    el = hamiltonian(ψ, walker.ψstatus, walker.configuration) / walker.ψstatus.value
-    el′ = -0.5*ψtrial′.laplacian(walker.configuration) / ψtrial′.value(walker.configuration)
-    return (el′ - el) / da
-end
+fat_walkers = [FatWalker(
+    walker, 
+    observables, 
+    OrderedDict(
+        "Local energy" => CircularBuffer(1),
+        "grad el" => CircularBuffer(1),
+        "grad log psi" => CircularBuffer(1),
+        "grad s" => CircularBuffer(steps_per_block),
+    ),
+    [
+        ("Local energy", "grad log psi"),
+        ("Local energy", "grad s")
+    ]
+    ) for walker in walkers]
 
-function logpsigrad(ψ, walker)
-    logψ = log(abs(walker.ψstatus.value))
-    logψ′ = log(abs(ψtrial′.value(walker.configuration)))
-    
-    (logψ′ - logψ) / da
-end
-
-#mutable struct ForceData
-#    ∇ₐel::Float64
-#    ∇ₐlogψ::Float64
-#    el∇ₐlogψ::Float64
-#end
-
-observables = Dict(
-    "Local energy" => (ψ, walker) -> hamiltonian(ψ, walker.ψstatus, walker.configuration) / walker.ψstatus.value,
-    "grad_a E_L" => elgrad,
-    "grad_a log Psi" => logpsigrad,
-    "E_L * grad_a log Psi" => (ψ, walker) -> hamiltonian(ψ, walker.ψstatus, walker.configuration) / walker.ψstatus.value * logpsigrad(ψ, walker),
-    "grad_a log Jacobian" => (_, _) -> 0.0,
-    "E_L * grad_a log Jacobian" => (_, _) -> 0.0,
-    "grad_a E_L (warp)" => elgrad,
-    "grad_a log Psi (warp)" => logpsigrad,
-    "E_L * grad_a log Psi (warp)" => (ψ, walker) -> hamiltonian(ψ, walker.ψstatus, walker.configuration) / walker.ψstatus.value * logpsigrad(ψ, walker),
+energies, errors = run_dmc!(
+    model, 
+    fat_walkers, 
+    τ, 
+    num_blocks, 
+    steps_per_block, 
+    5.0; 
+    rng=rng, 
+    neq=neq, 
+    outfile="test.hdf5"
 )
 
-# IDEA: one field of accumulator should be a function
-# that determines how observables are collected.
-# The default will just be a loop over the dictionary of
-# observable functions,
-# for forces it will be more complicated
-# First, let's do the HDF5 storage thing
-accumulator = Accumulator(observables)
+println("Energy: $(last(energies)) +- $(last(errors))")
 
-energies, errors = run_dmc!(model, walkers, τ, num_blocks, steps_per_block, 5.0; rng=rng, neq=neq, accumulator=accumulator, outfile="test.hdf5")
+f = h5open("test.hdf5", "r") do file
+    els = read(file, "Local energy")
+    ws = read(file, "Weight")
+    ∇ₐel = read(file, "grad el")
+    ∇ₐlogψ = read(file, "grad log psi")
+    el∇ₐlogψ = read(file, "Local energy * grad log psi")
+    ∇ₐs = read(file, "grad s")
+    el∇ₐs = read(file, "Local energy * grad s")
+    energy = mean(els, Weights(ws))
+    mean(-(∇ₐel .+ 2.0(el∇ₐlogψ .- energy*∇ₐlogψ) .+ el∇ₐs .- energy*∇ₐs), Weights(ws))
+end
 
-print("$(last(energies)) +- $(last(errors))")
+println("VD force: $f")
 
 plot(energies, ribbon=(errors, errors), fillalpha=0.2)
 hline!([5], color="black")

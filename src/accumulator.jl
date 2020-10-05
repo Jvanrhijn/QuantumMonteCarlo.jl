@@ -7,65 +7,71 @@ using HDF5
 
 
 mutable struct Accumulator
-    observables::Dict{String, Function}
-    ensemble_data::Dict
-    block_data::Dict
-    block_averages::Dict
-    accumulate_observables!::Function
+    block_data::OrderedDict
+    block_averages::OrderedDict
 
-    function Accumulator(observables, accumulate_observables!)  
-        ensemble_data = Dict()
-        block_data = Dict()
-        block_averages = Dict()
+    function Accumulator(fat_walkers)  
+        # obtain observables from walkers
+        ks = collect(keys(fat_walkers[1].data))
 
-        for (key, value) in observables
-            if key == "Weight"
-                throw(ArgumentError("Weight not allowed as an observable name"))
-            end
-            ensemble_data[key] = []
-            block_data[key] = []
-            block_averages[key] = []
+        # covariances
+        for (k1, k2) in fat_walkers[1].covariances
+            k = k1 * " * " * k2
+            push!(ks, k)
         end
-        ensemble_data["Weight"] = []
+
+        block_data = OrderedDict(k => [] for k in ks)
+        block_averages = OrderedDict(k => 0.0 for k in ks)
+
         block_data["Weight"] = []
-        block_averages["Weight"] = []
+        block_averages["Weight"] = 0.0
 
-        new(observables, ensemble_data, block_data, block_averages, accumulate_observables!)
+        new(block_data, block_averages)
     end
-
-    Accumulator(observables) = Accumulator(observables, accumulate_observables_default!)
 
 end
 
-function accumulate_observables_default!(walker, model, accumulator)
-    for (key, value) in accumulator.observables
-        val = value(model.wave_function, walker)
-        push!(accumulator.ensemble_data[key], val)
-    end
-    weights = accumulator.ensemble_data["Weight"]
-    push!(weights, walker.weight)
-end
+function average_ensemble!(fat_walkers, accumulator)
+    # TODO: Deal with covariance observables
 
-function average_ensemble!(accumulator)
-    weights = Float64.(accumulator.ensemble_data["Weight"])
+    weights = map(w -> last(w.walker.weight), fat_walkers)
     total_weight = sum(weights)
 
-    for (key, value) in accumulator.ensemble_data
-        accumulator.ensemble_data[key] = mean(value, Weights(weights))
+    # obtain observables from walkers
+    # TODO: make FatWalker generation more foolproof;
+    # don't allow specification of different sets of
+    # observables per walker, each walker should be a clone
+    # of the others
+    #ks = keys(fat_walkers[1].data)
+    ks = keys(accumulator.block_data)
+    data = OrderedDict(key => [] for key in ks)
+    wks = keys(fat_walkers[1].observables)
+
+    for fwalker in fat_walkers
+        for key in wks
+            # sum over the walker's history
+            push!(data[key], sum(fwalker.data[key]))
+        end
     end
 
-    for (key, value) in accumulator.ensemble_data
-        push!(accumulator.block_data[key], value)
+    # deal with covariance observables
+    for fwalker in fat_walkers
+        for (k1, k2) in fwalker.covariances
+            k = k1 * " * " * k2
+            push!(data[k], sum(fwalker.data[k1])*sum(fwalker.data[k2]))
+        end
     end
 
-    accumulator.block_data["Weight"][end] = total_weight
-
-    accumulator.ensemble_data = Dict()
-    for (key, _) in accumulator.observables
-        accumulator.ensemble_data[key] = []
+    # average over ensemble data
+    for (key, value) in data
+        if key == "Weight"
+            continue
+        end
+        push!(accumulator.block_data[key], mean(value, Weights(weights)))
     end
-    accumulator.ensemble_data["Weight"] = []
 
+
+    push!(accumulator.block_data["Weight"], total_weight)
 end
 
 function average_block!(accumulator)
@@ -73,20 +79,12 @@ function average_block!(accumulator)
     total_weight = sum(weights)
 
     for (key, value) in accumulator.block_data
-        accumulator.block_data[key] = mean(value, Weights(weights))
+        accumulator.block_averages[key] = mean(value, Weights(weights))
     end
     
-    for (key, value) in accumulator.block_data
-        push!(accumulator.block_averages[key], value)
-    end
+    accumulator.block_averages["Weight"] = total_weight
 
-    accumulator.block_averages["Weight"][end] = total_weight
-
-    accumulator.block_data = Dict()
-    for (key, _) in accumulator.observables
-        accumulator.block_data[key] = []
-    end
-    accumulator.block_data["Weight"] = []
+    reset_collection!(accumulator.block_data, accumulator)
 
 end
 
@@ -101,13 +99,13 @@ function write_to_file!(accumulator, file)
         dim = size(dset)
         new_dim = (dim[1]+1, dim[2:end]...)
         set_dims!(dset, new_dim)
-        dset[end, :] = value[:]
+        dset[end] = value
     end
 
-    accumulator.block_averages = Dict()
-    for (key, _) in accumulator.observables
-        accumulator.block_averages[key] = []
-    end
-    accumulator.block_averages["Weight"] = []
+    reset_collection!(accumulator.block_averages, accumulator)
+end
 
+function reset_collection!(collection, accumulator)
+    ks = keys(collection)
+    collection = OrderedDict(k => [] for k in ks)
 end

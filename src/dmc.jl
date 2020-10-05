@@ -5,8 +5,10 @@ using ProgressMeter
 using HDF5
 
 
-function run_dmc!(model, walkers, τ, num_blocks, steps_per_block, eref; rng=MersenneTwister(0), neq=0, accumulator=Nothing, outfile=Nothing)
-    nwalkers = length(walkers)
+function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng=MersenneTwister(0), neq=0, outfile=Nothing)
+    nwalkers = length(fat_walkers)
+
+    accumulator = Accumulator(fat_walkers)
 
     energy_estimate = zeros(num_blocks + 1)
     error_estimate = zeros(num_blocks + 1)
@@ -30,7 +32,8 @@ function run_dmc!(model, walkers, τ, num_blocks, steps_per_block, eref; rng=Mer
             weight_ensemble = zeros(nwalkers)
             
             # TODO thread-safe parallelism
-            for (i, walker) in collect(enumerate(walkers))
+            for (i, fwalker) in collect(enumerate(fat_walkers))
+                walker = fwalker.walker
                 el = model.hamiltonian(model.wave_function, walker.ψstatus, walker.configuration) / walker.ψstatus.value
 
                 # perform drift-diffuse step
@@ -48,15 +51,15 @@ function run_dmc!(model, walkers, τ, num_blocks, steps_per_block, eref; rng=Mer
                 local_energy_ensemble[i] = el′
                 weight_ensemble[i] = walker.weight
 
-                # TODO: allow accumulation of arbitrary observables
-                # obtainable from ψstatus
-                if accumulator != Nothing
-                    accumulator.accumulate_observables!(walker, model, accumulator)
+                # update FatWalker with observables computed at this
+                # configuration
+                if j > neq
+                    accumulate_observables!(fwalker, model, eref)
                 end
             end
 
-            if accumulator != Nothing
-                average_ensemble!(accumulator)
+            if j > neq
+                average_ensemble!(fat_walkers, accumulator)
             end
 
             ensemble_energy = mean(local_energy_ensemble, Weights(weight_ensemble))
@@ -70,12 +73,13 @@ function run_dmc!(model, walkers, τ, num_blocks, steps_per_block, eref; rng=Mer
 
         end
 
-        if accumulator != Nothing
+        if j > neq
             average_block!(accumulator)
+
             if outfile != Nothing
                 write_to_file!(accumulator, file)
             end
-        end 
+        end
 
         block_energy = mean(block_energy, Weights(block_weight))
         block_weight = sum(block_weight)
