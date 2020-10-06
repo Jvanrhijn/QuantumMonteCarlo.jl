@@ -131,6 +131,7 @@ function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng
                 lpad(string(j), num_digits(num_blocks + neq), '0'),
                 num_blocks + neq,
                 energy,
+                err,
                 block_energy,
                 first(energy_estimate)
             )
