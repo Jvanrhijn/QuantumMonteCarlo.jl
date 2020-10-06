@@ -14,8 +14,8 @@ function diffuse_walker!(walker, ψ, τ, rng::AbstractRNG)
     ∇ψ′ = ψ.gradient(x′)
     drift′ = ∇ψ′ / ψval′
     
-    denom = exp.(-norm(x′ .- x .- drift*τ)^2/(2.0τ))
     num = exp.(-norm(x .- x′ .- drift′*τ)^2/(2.0τ))
+    denom = exp.(-norm(x′ .- x .- drift*τ)^2/(2.0τ))
     
     acceptance = min(1.0, ψval′^2 / ψval^2 * num / denom)
 

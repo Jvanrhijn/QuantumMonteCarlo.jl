@@ -10,7 +10,7 @@ function local_energy_sec(fwalker, model, eref, ψ′)
     model.hamiltonian_recompute(ψ′, x) / ψ′.value(x)
 end
 
-function cutoff_tanh(d; a=0.1)
+function cutoff_tanh(d; a=0.05)
     b = a/5
     value = 0.5 * (1 + tanh((a - d)/b))
     deriv = -0.5 / b / cosh((a - d)/b)^2

@@ -3,6 +3,7 @@ using StatsBase
 using LinearAlgebra
 using ProgressMeter
 using HDF5
+#using Formatting: printfmt
 
 
 function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng=MersenneTwister(0), neq=0, outfile=Nothing)
@@ -82,13 +83,15 @@ function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng
         block_energy = mean(block_energy, Weights(block_weight))
         block_weight = sum(block_weight)
 
+        #printfmt("Block:")
+
         # perform branching
         stochastic_reconfiguration!(fat_walkers, rng)
 
         # only update energy esimate after block has run
         if j > neq
             n = j - neq
-            eref = 0.5 * (eref + block_energy)
+            eref = 0.5 * (eref + energy_estimate[n])
             
             energy_estimate[n+1] = (total_weight*energy_estimate[n] + block_weight*block_energy) /
                 (total_weight + block_weight)

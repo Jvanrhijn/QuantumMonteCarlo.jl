@@ -15,7 +15,7 @@ const da = 1e-5
 include("forceutil.jl")
 
 # DMC settings
-nwalkers = 100
+nwalkers = 25
 num_blocks = 400
 steps_per_block = 200
 neq = 10
@@ -116,7 +116,7 @@ fat_walkers = [QuantumMonteCarlo.FatWalker(
     ) for walker in walkers
 ]
 
-#fat_walkers = [QuantumMonteCarlo.FatWalker(walker, OrderedDict()) for walker in walkers]
+fat_walkers = [QuantumMonteCarlo.FatWalker(walker, OrderedDict()) for walker in walkers]
 
 ### Actually run DMC
 energies, errors = QuantumMonteCarlo.run_dmc!(
@@ -134,7 +134,7 @@ energies, errors = QuantumMonteCarlo.run_dmc!(
 
 println("Energy: $(last(energies)) +- $(last(errors))")
 
-p2 = plot(energies, ribbon=(errors, errors), fillalpha=0.2, reuse=false)
-hline!([5], color="black")
-hline!([pi^2/2], color="black")
-display(p2)
+#p2 = plot(energies, ribbon=(errors, errors), fillalpha=0.2, reuse=false)
+#hline!([5], color="black")
+#hline!([pi^2/2], color="black")
+#display(p2)
