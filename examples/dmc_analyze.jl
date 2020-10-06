@@ -5,7 +5,7 @@ using StatsBase
 
 include("forceutil.jl")
 
-ws = get_weights("test.hdf5")
+ws = get_weights(ARGS[1])
 
 flhf, flhf_warp = hellmann_feynman_force("test.hdf5")
 flpexact, flpexact_warp = pulay_force_exact("test.hdf5")

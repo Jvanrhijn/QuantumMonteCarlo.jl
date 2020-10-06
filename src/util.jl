@@ -25,3 +25,5 @@ function homsum(array::Array{Any})
     converted = reshape([array...], size(array)...)
     sum(converted)
 end
+
+num_digits = Int32 ∘ ceil ∘ log10

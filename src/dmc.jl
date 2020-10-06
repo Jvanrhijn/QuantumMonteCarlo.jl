@@ -3,10 +3,11 @@ using StatsBase
 using LinearAlgebra
 using ProgressMeter
 using HDF5
-#using Formatting: printfmt
+using Formatting
+using Dates
 
 
-function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng=MersenneTwister(0), neq=0, outfile=Nothing)
+function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng=MersenneTwister(0), neq=0, outfile=Nothing, verbosity=:silent)
     nwalkers = length(fat_walkers)
 
     accumulator = Accumulator(fat_walkers)
@@ -23,7 +24,13 @@ function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng
         file = h5open(outfile, "w")
     end
 
-    @showprogress for j = 1:(num_blocks + neq)
+    if verbosity == :progressbar
+        p = Progress(num_blocks + neq)
+    end
+
+    start_time = now()
+
+    for j = 1:(num_blocks + neq)
 
         block_energy = zeros(steps_per_block)
         block_weight = zeros(steps_per_block)
@@ -54,7 +61,9 @@ function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng
 
                 # update FatWalker with observables computed at this
                 # configuration
-                accumulate_observables!(fwalker, model, eref)
+                if j > neq
+                    accumulate_observables!(fwalker, model, eref)
+                end
             end
 
             if j > neq
@@ -106,6 +115,25 @@ function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng
 
         end
 
+        if verbosity == :progressbar
+            ProgressMeter.next!(p)
+        elseif verbosity == :loud
+            if j > neq
+                energy = energy_estimate[j-neq+1]
+            else
+                energy = first(energy_estimate)
+            end
+            time_elapsed = now() - start_time
+            printfmt("Time elapsed: {} | Block: {}/{} | Energy estimate: {:.5f} | Block energy: {:.5f} | Trial energy: {:.5f}\n",
+                format_duration(time_elapsed, "HH:MM:SS"),
+                lpad(string(j), num_digits(num_blocks + neq), '0'),
+                num_blocks + neq,
+                energy,
+                block_energy,
+                first(energy_estimate)
+            )
+        end
+
     end
 
     if outfile != Nothing
@@ -114,4 +142,10 @@ function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng
 
     return energy_estimate, error_estimate
 
+end
+
+function format_duration(duration, format)
+    periods = Dates.canonicalize(Dates.CompoundPeriod(duration))
+    date = Dates.DateTime(periods.periods...)
+    Dates.format(date, format)
 end

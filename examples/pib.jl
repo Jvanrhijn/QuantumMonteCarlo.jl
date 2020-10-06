@@ -15,7 +15,7 @@ const da = 1e-5
 include("forceutil.jl")
 
 # DMC settings
-nwalkers = 10
+nwalkers = 100
 num_blocks = 400
 steps_per_block = 100
 neq = 10
@@ -128,13 +128,6 @@ energies, errors = QuantumMonteCarlo.run_dmc!(
     5.0; 
     rng=rng, 
     neq=neq, 
-    outfile="test.hdf5"
-)
-
-
-println("Energy: $(last(energies)) +- $(last(errors))")
-
-#p2 = plot(energies, ribbon=(errors, errors), fillalpha=0.2, reuse=false)
-#hline!([5], color="black")
-#hline!([pi^2/2], color="black")
-#display(p2)
+    #outfile=ARGS[1],
+    verbosity=:loud
+);
