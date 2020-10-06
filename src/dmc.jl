@@ -6,7 +6,7 @@ using HDF5
 
 
 function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng=MersenneTwister(0), neq=0, outfile=Nothing)
-    const nwalkers = length(fat_walkers)
+    nwalkers = length(fat_walkers)
 
     accumulator = Accumulator(fat_walkers)
 
@@ -53,9 +53,7 @@ function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng
 
                 # update FatWalker with observables computed at this
                 # configuration
-                if j > neq
-                    accumulate_observables!(fwalker, model, eref)
-                end
+                accumulate_observables!(fwalker, model, eref)
             end
 
             if j > neq

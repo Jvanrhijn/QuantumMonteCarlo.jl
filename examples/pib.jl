@@ -15,11 +15,11 @@ const da = 1e-5
 include("forceutil.jl")
 
 # DMC settings
-nwalkers = 10
-num_blocks = 100
-steps_per_block = 100
+nwalkers = 100
+num_blocks = 400
+steps_per_block = 200
 neq = 10
-τ = 1e-2
+τ = .5e-2
 
 # Trial wave function
 function ψpib(x::Array{Float64})
@@ -60,18 +60,23 @@ observables = OrderedDict(
     "Local energy (secondary)" => (fwalker, model, eref) -> local_energy_sec(fwalker, model, eref, ψtrial′),
     "ψ′" => (fwalker, model, eref) -> psi_sec(fwalker, model, eref, ψtrial′),
     "∇ψ′" => (fwalker, model, eref) -> gradpsi_sec(fwalker, model, eref, ψtrial′),
-    #"ψ′_old" => (fwalker, model, eref) -> psi_sec_old(fwalker, model, eref, ψtrial′),
-    #"∇ψ′_old" => (fwalker, model, eref) -> gradpsi_sec_old(fwalker, model, eref, ψtrial′),
-    #"grad el" => (fwalker, model, eref) -> gradel(fwalker, model, eref, ψtrial′),
-    #"grad el (warp)" => (fwalker, model, eref) -> gradel_warp(fwalker, model, eref, ψtrial′),
-    #"grad log psi" => grad_logpsi,
-    #"grad log psi (warp)" => (fwalker, model, eref) -> grad_logpsi_warp(fwalker, model, eref, ψtrial′),
-    #"grad s" => (fwalker, model, eref) -> grads(fwalker, model, eref, ψtrial′, τ),
-    #"grad t" => (fwalker, model, eref) -> gradt(fwalker, model, eref, ψtrial′, τ),
-    #"grad s (warp)" => (fwalker, model, eref) -> grads_warp(fwalker, model, eref, ψtrial′, τ),
-    #"grad t (warp)" => (fwalker, model, eref) -> gradt_warp(fwalker, model, eref, ψtrial′, τ),
-    #"grad log j" => gradj,
-    #"sum grad log j" => gradj,
+    "ψ′_old" => (fwalker, model, eref) -> psi_sec_old(fwalker, model, eref, ψtrial′),
+    "∇ψ′_old" => (fwalker, model, eref) -> gradpsi_sec_old(fwalker, model, eref, ψtrial′),
+    "grad el" => (fwalker, model, eref) -> gradel(fwalker, model, eref, ψtrial′),
+    "grad el (warp)" => (fwalker, model, eref) -> gradel_warp(fwalker, model, eref, ψtrial′),
+    "grad log psi" => grad_logpsi,
+    "grad log psi (warp)" => (fwalker, model, eref) -> grad_logpsi_warp(fwalker, model, eref, ψtrial′),
+    "grad s" => (fwalker, model, eref) -> grads(fwalker, model, eref, ψtrial′, τ),
+    "grad t" => (fwalker, model, eref) -> gradt(fwalker, model, eref, ψtrial′, τ),
+    "grad s (warp)" => (fwalker, model, eref) -> grads_warp(fwalker, model, eref, ψtrial′, τ),
+    "grad t (warp)" => (fwalker, model, eref) -> gradt_warp(fwalker, model, eref, ψtrial′, τ),
+    # These are placeholders, need to collect cutoff-ed versions as well
+    "grad s (no cutoff)" => (fwalker, model, eref) -> grads(fwalker, model, eref, ψtrial′, τ),
+    "grad t (no cutoff)" => (fwalker, model, eref) -> gradt(fwalker, model, eref, ψtrial′, τ),
+    "grad s (warp, no cutoff)" => (fwalker, model, eref) -> grads_warp(fwalker, model, eref, ψtrial′, τ),
+    "grad t (warp, no cutoff)" => (fwalker, model, eref) -> gradt_warp(fwalker, model, eref, ψtrial′, τ),
+    "grad log j" => gradj,
+    "sum grad log j" => gradj,
 )
 
 rng = MersenneTwister(0)
@@ -79,29 +84,39 @@ rng = MersenneTwister(0)
 # create "Fat" walkers
 walkers = QuantumMonteCarlo.generate_walkers(nwalkers, ψtrial, rng, Uniform(0., 1.), 1)
 
-#fat_walkers = [QuantumMonteCarlo.FatWalker(walker, OrderedDict()) for walker in walkers]
+
 fat_walkers = [QuantumMonteCarlo.FatWalker(
     walker, 
     observables, 
     OrderedDict(
-        #"grad s" => CircularBuffer(steps_per_block),
-        #"grad t" => CircularBuffer(steps_per_block),
-        #"grad s (warp)" => CircularBuffer(steps_per_block),
-        #"grad t (warp)" => CircularBuffer(steps_per_block),
-        #"sum grad log j" => CircularBuffer(steps_per_block)
+        "grad s" => CircularBuffer(steps_per_block),
+        "grad t" => CircularBuffer(steps_per_block),
+        "grad s (warp)" => CircularBuffer(steps_per_block),
+        "grad t (warp)" => CircularBuffer(steps_per_block),
+        "grad s (no cutoff)" => CircularBuffer(steps_per_block),
+        "grad t (no cutoff)" => CircularBuffer(steps_per_block),
+        "grad s (warp, no cutoff)" => CircularBuffer(steps_per_block),
+        "grad t (warp, no cutoff)" => CircularBuffer(steps_per_block),
+        "sum grad log j" => CircularBuffer(steps_per_block)
     ),
     [
-        #("Local energy", "grad log psi"),
-        #("Local energy", "grad log psi (warp)"),
-        #("Local energy", "grad s"),
-        #("Local energy", "grad t"),
-        #("Local energy", "grad s (warp)"),
-        #("Local energy", "grad t (warp)"),
-        #("Local energy", "grad log j"),
-        #("Local energy", "sum grad log j"),
+        ("Local energy", "grad log psi"),
+        ("Local energy", "grad log psi (warp)"),
+        ("Local energy", "grad s"),
+        ("Local energy", "grad t"),
+        ("Local energy", "grad s (warp)"),
+        ("Local energy", "grad t (warp)"),
+        ("Local energy", "grad s (no cutoff)"),
+        ("Local energy", "grad t (no cutoff)"),
+        ("Local energy", "grad s (warp, no cutoff)"),
+        ("Local energy", "grad t (warp, no cutoff)"),
+        ("Local energy", "grad log j"),
+        ("Local energy", "sum grad log j"),
     ]
     ) for walker in walkers
 ]
+
+#fat_walkers = [QuantumMonteCarlo.FatWalker(walker, OrderedDict()) for walker in walkers]
 
 ### Actually run DMC
 energies, errors = QuantumMonteCarlo.run_dmc!(
@@ -113,40 +128,13 @@ energies, errors = QuantumMonteCarlo.run_dmc!(
     5.0; 
     rng=rng, 
     neq=neq, 
-    #outfile="test.hdf5"
+    outfile="test.hdf5"
 )
 
 
 println("Energy: $(last(energies)) +- $(last(errors))")
 
-
-#ws = get_weights("test.hdf5")
-#
-#flhf, flhf_warp = hellmann_feynman_force("test.hdf5")
-#flpexact, flpexact_warp = pulay_force_exact("test.hdf5")
-#flpvd, flpvd_warp = pulay_force_vd("test.hdf5")
-#
-#fhf = mean(flhf, Weights(ws))
-#fhf_warp = mean(flhf_warp, Weights(ws))
-#
-#fpexact = mean(flpexact, Weights(ws))
-#fpexact_warp = mean(flpexact_warp, Weights(ws))
-#
-#fpvd = mean(flpvd, Weights(ws))
-#fpvd_warp = mean(flpvd_warp, Weights(ws))
-#
-#println("Force (exact):       $(fhf + fpexact)")
-#println("Force (exact, warp): $(fhf_warp + fpexact_warp)")
-#println("Force (vd):          $(fhf + fpvd)")
-#println("Force (vd, warp):    $(fhf_warp + fpvd_warp)")
-#
-#pyplot()
-#
-#p1 = plot((flhf + flpvd)[2:end], reuse=false)
-#plot!((flhf_warp + flpvd_warp)[2:end])
-#display(p1)
-#
-#p2 = plot(energies, ribbon=(errors, errors), fillalpha=0.2, reuse=false)
-#hline!([5], color="black")
-#hline!([pi^2/2], color="black")
-#display(p2)
+p2 = plot(energies, ribbon=(errors, errors), fillalpha=0.2, reuse=false)
+hline!([5], color="black")
+hline!([pi^2/2], color="black")
+display(p2)

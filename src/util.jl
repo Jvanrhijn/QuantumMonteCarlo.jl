@@ -20,3 +20,8 @@ function laplacian_fd(f, x; dx=1e-5)
     end
     out
 end
+
+function homsum(array::Array{Any})
+    converted = reshape([array...], size(array)...)
+    sum(converted)
+end

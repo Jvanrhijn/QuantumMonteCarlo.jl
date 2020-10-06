@@ -23,11 +23,15 @@ mutable struct FatWalker
     observables::OrderedDict{String, Function}
     data::OrderedDict{String, CircularBuffer}
     covariances::Array{Tuple{String, String}}
+    observable_names::Array{String}
+    history_sums::OrderedDict{String, Any}
 
     # including everything
     function FatWalker(walker, observables, data, covs)
         data["Weight"] = CircularBuffer(1)
         data_keys = keys(data)
+        observable_names = collect(keys(observables))
+        history_sums = OrderedDict{String, Any}(k => 0.0 for k in observable_names)
         # only need to add buffers that are not
         # already given
         for (key, value) in observables
@@ -35,7 +39,7 @@ mutable struct FatWalker
                 data[key] = CircularBuffer(1)
             end
         end
-        new(walker, observables, data, covs)
+        new(walker, observables, data, covs, observable_names, history_sums)
     end
 
     # no covariances
@@ -50,7 +54,9 @@ mutable struct FatWalker
             data[k] = CircularBuffer(1)
         end
         data["Weight"] = CircularBuffer(1)
-        new(walker, observables, data, covs)
+        observable_names = collect(keys(observables))
+        history_sums = OrderedDict(k => 0.0 for k in observable_names)
+        new(walker, observables, data, covs, observable_names, history_sums)
     end
 
     # only observables
@@ -61,9 +67,21 @@ mutable struct FatWalker
 end
 
 function accumulate_observables!(fwalker, model, eref)
-    for (key, func) in fwalker.observables
-        val = func(fwalker, model, eref)
-        push!(fwalker.data[key], val)
+    #for (key, func) in fwalker.observables
+    for key in fwalker.observable_names
+        func = fwalker.observables[key]
+        new_val = func(fwalker, model, eref)
+        
+        # if the history is saturated, subtract the oldest from sum
+        if length(fwalker.data[key]) == fwalker.data[key].capacity
+            fwalker.history_sums[key] = fwalker.history_sums[key] .- first(fwalker.data[key])
+        end
+
+        push!(fwalker.data[key], new_val)
+
+        # add new value to history sum
+        fwalker.history_sums[key] = fwalker.history_sums[key] .+ new_val
+
     end
     push!(fwalker.data["Weight"], fwalker.walker.weight)
 end

@@ -8,7 +8,7 @@ using HDF5
 
 mutable struct Accumulator
     block_data::OrderedDict
-    block_averages::OrderedDict
+    block_averages::OrderedDict{String, Float64}
 
     function Accumulator(fat_walkers)  
         # obtain observables from walkers
@@ -21,7 +21,7 @@ mutable struct Accumulator
         end
 
         block_data = OrderedDict(k => [] for k in ks)
-        block_averages = OrderedDict(k => 0.0 for k in ks)
+        block_averages = OrderedDict{String, Float64}(k => 0.0 for k in ks)
 
         block_data["Weight"] = []
         block_averages["Weight"] = 0.0
@@ -42,15 +42,15 @@ function average_ensemble!(fat_walkers, accumulator)
     # don't allow specification of different sets of
     # observables per walker, each walker should be a clone
     # of the others
-    #ks = keys(fat_walkers[1].data)
     ks = keys(accumulator.block_data)
     data = OrderedDict(key => [] for key in ks)
-    wks = keys(fat_walkers[1].observables)
 
     for fwalker in fat_walkers
-        for key in wks
+        for key in fwalker.observable_names
             # sum over the walker's history
-            push!(data[key], sum(fwalker.data[key]))
+            history_sum = fwalker.history_sums[key]
+            #push!(data[key], homsum(fwalker.data[key].buffer))
+            push!(data[key], history_sum)
         end
     end
 
@@ -58,7 +58,9 @@ function average_ensemble!(fat_walkers, accumulator)
     for fwalker in fat_walkers
         for (k1, k2) in fwalker.covariances
             k = k1 * " * " * k2
-            push!(data[k], sum(fwalker.data[k1])*sum(fwalker.data[k2]))
+            histsum1 = fwalker.history_sums[k1]
+            histsum2 = fwalker.history_sums[k2]
+            push!(data[k], histsum1*histsum2)
         end
     end
 
@@ -102,7 +104,7 @@ function write_to_file!(accumulator, file)
     end
 
     ks = keys(accumulator.block_averages)
-    accumulator.block_averages = OrderedDict(k => 0.0 for k in ks)
+    accumulator.block_averages = OrderedDict{String, Float64}(k => 0.0 for k in ks)
 end
 
 function reset_collection!(collection)
