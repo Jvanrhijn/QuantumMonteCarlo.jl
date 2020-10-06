@@ -135,6 +135,7 @@ function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng
                 block_energy,
                 first(energy_estimate)
             )
+            flush(stdout)
         end
 
     end
