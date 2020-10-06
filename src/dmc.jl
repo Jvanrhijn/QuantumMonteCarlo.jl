@@ -120,11 +120,13 @@ function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng
         elseif verbosity == :loud
             if j > neq
                 energy = energy_estimate[j-neq+1]
+                err = error_estimate[j-neq+1]
             else
                 energy = first(energy_estimate)
+                err = 0.0
             end
             time_elapsed = now() - start_time
-            printfmt("Time elapsed: {} | Block: {}/{} | Energy estimate: {:.5f} | Block energy: {:.5f} | Trial energy: {:.5f}\n",
+            printfmt("Time elapsed: {} | Block: {}/{} | Energy estimate: {:.5f} +- {:.5f} | Block energy: {:.5f} | Trial energy: {:.5f}\n",
                 format_duration(time_elapsed, "HH:MM:SS"),
                 lpad(string(j), num_digits(num_blocks + neq), '0'),
                 num_blocks + neq,

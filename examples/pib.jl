@@ -15,11 +15,11 @@ const da = 1e-5
 include("forceutil.jl")
 
 # DMC settings
+τ = 1e-2
 nwalkers = 100
 num_blocks = 400
-steps_per_block = 100
+steps_per_block = Int64(1/τ)
 neq = 10
-τ = 1e-2
 
 # Trial wave function
 function ψpib(x::Array{Float64})
@@ -63,9 +63,9 @@ observables = OrderedDict(
     "ψ′_old" => (fwalker, model, eref) -> psi_sec_old(fwalker, model, eref, ψtrial′),
     "∇ψ′_old" => (fwalker, model, eref) -> gradpsi_sec_old(fwalker, model, eref, ψtrial′),
     "grad el" => (fwalker, model, eref) -> gradel(fwalker, model, eref, ψtrial′),
-    "grad el (warp)" => (fwalker, model, eref) -> gradel_warp(fwalker, model, eref, ψtrial′),
+    "grad el (warp)" => (fwalker, model, eref) -> gradel_warp(fwalker, model, eref, ψtrial′, τ),
     "grad log psi" => grad_logpsi,
-    "grad log psi (warp)" => (fwalker, model, eref) -> grad_logpsi_warp(fwalker, model, eref, ψtrial′),
+    "grad log psi (warp)" => (fwalker, model, eref) -> grad_logpsi_warp(fwalker, model, eref, ψtrial′, τ),
     "grad s" => (fwalker, model, eref) -> grads(fwalker, model, eref, ψtrial′, τ),
     "grad t" => (fwalker, model, eref) -> gradt(fwalker, model, eref, ψtrial′, τ),
     "grad s (warp)" => (fwalker, model, eref) -> grads_warp(fwalker, model, eref, ψtrial′, τ),
@@ -75,8 +75,8 @@ observables = OrderedDict(
     "grad t (no cutoff)" => (fwalker, model, eref) -> gradt(fwalker, model, eref, ψtrial′, τ),
     "grad s (warp, no cutoff)" => (fwalker, model, eref) -> grads_warp(fwalker, model, eref, ψtrial′, τ),
     "grad t (warp, no cutoff)" => (fwalker, model, eref) -> gradt_warp(fwalker, model, eref, ψtrial′, τ),
-    "grad log j" => gradj,
-    "sum grad log j" => gradj,
+    "grad log j" => (fwalker, model, eref) -> gradj(fwalker, model, eref, τ),
+    "sum grad log j" => (fwalker, model, eref) -> gradj(fwalker, model, eref, τ),
 )
 
 rng = MersenneTwister(0)
@@ -116,7 +116,7 @@ fat_walkers = [QuantumMonteCarlo.FatWalker(
     ) for walker in walkers
 ]
 
-fat_walkers = [QuantumMonteCarlo.FatWalker(walker, OrderedDict()) for walker in walkers]
+#fat_walkers = [QuantumMonteCarlo.FatWalker(walker, OrderedDict()) for walker in walkers]
 
 ### Actually run DMC
 energies, errors = QuantumMonteCarlo.run_dmc!(
@@ -128,6 +128,6 @@ energies, errors = QuantumMonteCarlo.run_dmc!(
     5.0; 
     rng=rng, 
     neq=neq, 
-    #outfile=ARGS[1],
+    outfile=ARGS[1],
     verbosity=:loud
 );

@@ -17,12 +17,12 @@ function cutoff_tanh(d; a=0.05)
     value, deriv
 end
 
-function node_warp(x, ψ, ∇ψ, ψ′, ∇ψ′)
+function node_warp(x, ψ, ∇ψ, ψ′, ∇ψ′, τ)
     d = abs(ψ) / norm(∇ψ)
     d′ = abs(ψ′) / norm(∇ψ′)
     n′ = ∇ψ′ / norm(∇ψ′)
     n = ∇ψ / norm(∇ψ)
-    u, uderiv = cutoff_tanh(d)
+    u, uderiv = cutoff_tanh(d; a=√τ)
     xwarp = x .+ (d - d′) * u * sign(ψ′) * n′
     jac = 1 - u + sign(ψ′*ψ) * dot(n, n′) * (u + (d - d′)*uderiv)
     xwarp, jac
@@ -34,14 +34,14 @@ function gradel(fwalker, model, eref, ψ′)
     (el′ - el) / da
 end
 
-function gradel_warp(fwalker, model, eref, ψt′)
+function gradel_warp(fwalker, model, eref, ψt′, τ)
     walker = fwalker.walker
     ψ = walker.ψstatus.value
     ∇ψ = walker.ψstatus.gradient
     ψ′ = last(fwalker.data["ψ′"])
     ∇ψ′ = last(fwalker.data["∇ψ′"])
     x = walker.configuration
-    xwarp, jac = node_warp(x, ψ, ∇ψ, ψ′, ∇ψ′)
+    xwarp, jac = node_warp(x, ψ, ∇ψ, ψ′, ∇ψ′, √τ)
 
     #el = model.hamiltonian(walker.ψstatus, x) / ψ
     el = last(fwalker.data["Local energy"])
@@ -104,8 +104,8 @@ function grads_warp(fwalker, model, eref, ψt′, τ)
     ∇ψ′prev = last(fwalker.data["∇ψ′_old"])
 
     # perform warp
-    xwarp , _ = node_warp(x, ψ, ∇ψ, ψ′, ∇ψ′)
-    xwarpprev, _ = node_warp(xprev, ψprev, ∇ψprev, ψ′prev, ∇ψ′prev)
+    xwarp , _ = node_warp(x, ψ, ∇ψ, ψ′, ∇ψ′, √τ)
+    xwarpprev, _ = node_warp(xprev, ψprev, ∇ψprev, ψ′prev, ∇ψ′prev, √τ)
 
     #el_prev = -0.5 * walker.ψstatus_old.laplacian / walker.ψstatus_old.value
     el_prev = model.hamiltonian(walker.ψstatus_old, xprev) / walker.ψstatus_old.value
@@ -154,8 +154,8 @@ function gradt_warp(fwalker, model, eref, ψt′, τ)
     ∇ψ′prev = last(fwalker.data["∇ψ′_old"])
 
     # perform warp
-    xwarp , _ = node_warp(x, ψ, ∇ψ, ψ′, ∇ψ′)
-    xwarpprev, _ = node_warp(xprev, ψprev, ∇ψprev, ψ′prev, ∇ψ′prev)
+    xwarp , _ = node_warp(x, ψ, ∇ψ, ψ′, ∇ψ′, √τ)
+    xwarpprev, _ = node_warp(xprev, ψprev, ∇ψprev, ψ′prev, ∇ψ′prev, √τ)
 
     # compute warped drift
     ∇ψ′_old_warp = ψt′.gradient(xwarpprev)
@@ -168,7 +168,7 @@ function gradt_warp(fwalker, model, eref, ψt′, τ)
     return (t' - t) / da
 end
 
-function gradj(fwalker, model, eref)
+function gradj(fwalker, model, eref, τ)
     walker = fwalker.walker
 
     x = walker.configuration
@@ -179,7 +179,7 @@ function gradj(fwalker, model, eref)
     ψ′ = last(fwalker.data["ψ′"])
     ∇ψ′ = last(fwalker.data["∇ψ′"])
 
-    _, jac = node_warp(x, ψ, ∇ψ, ψ′, ∇ψ′)
+    _, jac = node_warp(x, ψ, ∇ψ, ψ′, ∇ψ′, √τ)
 
     return log(abs(jac)) / da
 end
@@ -190,7 +190,7 @@ function grad_logpsi(fwalker, model, eref)
     (log(abs(ψ′)) - log(abs(ψ))) / da
 end
 
-function grad_logpsi_warp(fwalker, model, eref, ψt′)
+function grad_logpsi_warp(fwalker, model, eref, ψt′, τ)
     walker = fwalker.walker
 
     x = walker.configuration
@@ -201,7 +201,7 @@ function grad_logpsi_warp(fwalker, model, eref, ψt′)
     ψ′ = last(fwalker.data["ψ′"])
     ∇ψ′ = last(fwalker.data["∇ψ′"])
 
-    xwarp, _ = node_warp(x, ψ, ∇ψ, ψ′, ∇ψ′)
+    xwarp, _ = node_warp(x, ψ, ∇ψ, ψ′, ∇ψ′, √τ)
 
     (log(abs(ψt′.value(xwarp))) - log(abs(ψ))) / da
 end
