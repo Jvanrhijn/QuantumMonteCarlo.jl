@@ -8,5 +8,5 @@ function stochastic_reconfiguration!(walkers, rng::AbstractRNG)
         walker.walker.weight = 1.0
     end
     
-    walkers = new_walkers
+    walkers .= new_walkers
 end
