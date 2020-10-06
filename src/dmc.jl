@@ -83,15 +83,12 @@ function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng
         block_energy = mean(block_energy, Weights(block_weight))
         block_weight = sum(block_weight)
 
-        #printfmt("Block:")
-
         # perform branching
         stochastic_reconfiguration!(fat_walkers, rng)
 
         # only update energy esimate after block has run
         if j > neq
             n = j - neq
-            eref = 0.5 * (eref + energy_estimate[n])
             
             energy_estimate[n+1] = (total_weight*energy_estimate[n] + block_weight*block_energy) /
                 (total_weight + block_weight)
@@ -104,6 +101,8 @@ function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng
             error_estimate[n+1] = sqrt(variance_estimate[n+1] / n)                
 
             total_weight += block_weight
+
+            eref = 0.5 * (eref + energy_estimate[n+1])*0
 
         end
 
