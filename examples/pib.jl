@@ -15,10 +15,10 @@ const da = 1e-5
 include("forceutil.jl")
 
 # DMC settings
-τ = .5e-2
-nwalkers = 100
-num_blocks = 400
-steps_per_block = Int64(1/τ)
+τ = 1e-3
+nwalkers = 10
+num_blocks = 100
+steps_per_block = trunc(Int64, 1/τ)
 neq = 10
 
 # Trial wave function
