@@ -107,7 +107,6 @@ function grads_warp(fwalker, model, eref, ψt′, τ)
     xwarp , _ = node_warp(x, ψ, ∇ψ, ψ′, ∇ψ′, τ)
     xwarpprev, _ = node_warp(xprev, ψprev, ∇ψprev, ψ′prev, ∇ψ′prev, τ)
 
-    #el_prev = -0.5 * walker.ψstatus_old.laplacian / walker.ψstatus_old.value
     el_prev = model.hamiltonian(walker.ψstatus_old, xprev) / walker.ψstatus_old.value
     el_prev′ = model.hamiltonian_recompute(ψt′, xwarpprev) / ψt′.value(xwarpprev)
 
@@ -142,13 +141,13 @@ function gradt_warp(fwalker, model, eref, ψt′, τ)
 
     ψ = walker.ψstatus.value
     ∇ψ = walker.ψstatus.gradient
-    v = ∇ψ / ψ
 
     ψ′ = last(fwalker.data["ψ′"])
     ∇ψ′ = last(fwalker.data["∇ψ′"])
 
     ψprev = walker.ψstatus_old.value
     ∇ψprev = walker.ψstatus_old.gradient
+    v = ∇ψprev / ψprev
 
     ψ′prev = last(fwalker.data["ψ′_old"])
     ∇ψ′prev = last(fwalker.data["∇ψ′_old"])
