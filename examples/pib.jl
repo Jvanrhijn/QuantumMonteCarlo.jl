@@ -15,12 +15,12 @@ const da = 1e-5
 include("forceutil.jl")
 
 # DMC settings
-τ = 1e-3
-nwalkers = 25
-num_blocks = 1000
+τ = 1e-2
+nwalkers = 10
+num_blocks = 100
 steps_per_block = trunc(Int64, 1/τ)
 neq = 10
-lag = 10*steps_per_block
+lag = steps_per_block
 
 # Trial wave function
 function ψpib(x::Array{Float64})
@@ -28,7 +28,7 @@ function ψpib(x::Array{Float64})
 end
 
 function ψpib′(x::Array{Float64})
-    max(0, x[1].*(a + da .- x[1]))
+    max(0, (x[1] + da/2).*(a + da /2 .- x[1]))
 end
 
 ψtrial = WaveFunction(

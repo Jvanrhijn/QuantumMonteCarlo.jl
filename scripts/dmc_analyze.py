@@ -63,8 +63,8 @@ def plot_error_over_time(flhf, flpulay, flhf_warp, flpulay_warp, npoints, weight
 def compute_forces(fpath):
     data = h5py.File(fpath, "r")
 
-    energy = np.mean(data["Local energy"][()][1:])
     weights = data["Weight"][()][1:]
+    energy = np.average(data["Local energy"][()][1:], weights=weights)
 
     # Get Green's function derivatives
     sderiv_sum = data["grad s"][()][1:]        
