@@ -127,10 +127,16 @@ function gradt(fwalker, model, eref, ψ′, τ)
     ψsec = ψ′.value(x)
     vsec = ∇ψsec / ψsec
 
-    t = -1/(2.0τ) * norm(x′ - x - v*τ)^2
-    t′ = -1/(2.0τ) * norm(x′ - x - vsec*τ)^2
+    u = x′ - x - v*τ
 
-    return (t' - t) / da
+    ∇ₐv = (vsec - v) / da
+
+    return dot(u, ∇ₐv)
+
+    #t = -1/(2.0τ) * norm(x′ - x - v*τ)^2
+    #t′ = -1/(2.0τ) * norm(x′ - x - vsec*τ)^2
+
+    #return (t' - t) / da
 end
 
 function gradt_warp(fwalker, model, eref, ψt′, τ)
@@ -161,10 +167,16 @@ function gradt_warp(fwalker, model, eref, ψt′, τ)
     ψ′_old_warp = ψt′.value(xwarpprev)
     vsec_warp = ∇ψ′_old_warp / ψ′_old_warp
 
-    t = -1/(2.0τ) * norm(x .- xprev .- v*τ)^2
-    t′ = -1/(2.0τ) * norm(xwarp .- xwarpprev .- vsec_warp*τ)^2
+    u = x - xprev - v*τ
 
-    return (t' - t) / da
+    ∇ₐv = (vsec_warp - v) / da
+
+    return dot(u, ∇ₐv)
+
+    #t = -1/(2.0τ) * norm(x .- xprev .- v*τ)^2
+    #t′ = -1/(2.0τ) * norm(xwarp .- xwarpprev .- vsec_warp*τ)^2
+
+    #return (t' - t) / da
 end
 
 function gradj(fwalker, model, eref, τ)

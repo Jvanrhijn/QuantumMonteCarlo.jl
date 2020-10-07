@@ -16,10 +16,11 @@ include("forceutil.jl")
 
 # DMC settings
 τ = 1e-3
-nwalkers = 10
-num_blocks = 100
+nwalkers = 25
+num_blocks = 1000
 steps_per_block = trunc(Int64, 1/τ)
 neq = 10
+lag = 10*steps_per_block
 
 # Trial wave function
 function ψpib(x::Array{Float64})
@@ -89,15 +90,15 @@ fat_walkers = [QuantumMonteCarlo.FatWalker(
     walker, 
     observables, 
     OrderedDict(
-        "grad s" => CircularBuffer(steps_per_block),
-        "grad t" => CircularBuffer(steps_per_block),
-        "grad s (warp)" => CircularBuffer(steps_per_block),
-        "grad t (warp)" => CircularBuffer(steps_per_block),
-        "grad s (no cutoff)" => CircularBuffer(steps_per_block),
-        "grad t (no cutoff)" => CircularBuffer(steps_per_block),
-        "grad s (warp, no cutoff)" => CircularBuffer(steps_per_block),
-        "grad t (warp, no cutoff)" => CircularBuffer(steps_per_block),
-        "sum grad log j" => CircularBuffer(steps_per_block)
+        "grad s" => CircularBuffer(lag),
+        "grad t" => CircularBuffer(lag),
+        "grad s (warp)" => CircularBuffer(lag),
+        "grad t (warp)" => CircularBuffer(lag),
+        "grad s (no cutoff)" => CircularBuffer(lag),
+        "grad t (no cutoff)" => CircularBuffer(lag),
+        "grad s (warp, no cutoff)" => CircularBuffer(lag),
+        "grad t (warp, no cutoff)" => CircularBuffer(lag),
+        "sum grad log j" => CircularBuffer(lag)
     ),
     [
         ("Local energy", "grad log psi"),
