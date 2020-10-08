@@ -17,10 +17,10 @@ include("forceutil.jl")
 # DMC settings
 τ = 1e-3
 nwalkers = 25
-num_blocks = 100
+num_blocks = 400
 steps_per_block = trunc(Int64, 1/τ)
 neq = 10
-lag = 2*steps_per_block
+lag = 10*steps_per_block
 
 # Trial wave function
 function ψpib(x::Array{Float64})
@@ -117,7 +117,7 @@ fat_walkers = [QuantumMonteCarlo.FatWalker(
     ) for walker in walkers
 ]
 
-#fat_walkers = [QuantumMonteCarlo.FatWalker(walker, OrderedDict()) for walker in walkers]
+#fat_walkers = [QuantumMonteCarlo.FatWalker(walker) for walker in walkers]
 
 ### Actually run DMC
 energies, errors = QuantumMonteCarlo.run_dmc!(
