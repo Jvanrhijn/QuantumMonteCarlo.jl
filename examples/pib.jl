@@ -20,7 +20,7 @@ nwalkers = 25
 num_blocks = 400
 steps_per_block = trunc(Int64, 1/τ)
 neq = 10
-lag = 10*steps_per_block
+lag = 2*steps_per_block
 
 # Trial wave function
 function ψpib(x::Array{Float64})
