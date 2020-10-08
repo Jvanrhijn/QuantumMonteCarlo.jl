@@ -46,6 +46,10 @@ function gradel_warp(fwalker, model, eref, ψt′, τ)
     #el = model.hamiltonian(walker.ψstatus, x) / ψ
     el = last(fwalker.data["Local energy"])
     el′ = model.hamiltonian_recompute(ψt′, xwarp) / ψt′.value(xwarp)
+    
+    if xwarp[1] < 0.0
+        println("warped: $(ψt′.value(xwarp))    $(xwarp) | non-warped: $(model.wave_function.value(x))    $(x)")
+    end
     (el′ - el) / da
 end
 
@@ -186,7 +190,7 @@ function gradt_warp(fwalker, model, eref, ψt′, τ)
     ∇ₐnormvsq = (norm(vsec_warp)^2 - norm(v)^2)/da
 
     t = -1/(2.0τ) * norm(u)^2
-    t′ = -1/(2.0τ) * norm(uwarp)^2
+    t′ = -1/(2.0τ) * norm(u′)^2
 
     return (t′ - t) / da
 

@@ -9,6 +9,10 @@ mutable struct Walker
     weight::Float64
     ψstatus::WaveFunctionStatus
     ψstatus_old::WaveFunctionStatus
+    square_displacement::Float64
+    square_displacement_times_acceptance::Float64
+
+    Walker(configuration, ψstatus) = new(configuration, configuration, 1.0, ψstatus, ψstatus, 0.0, 0.0)
 end
 
 # A fat walker is a walker along with a dictionary
@@ -94,7 +98,7 @@ function generate_walkers(nwalker, ψ, rng, distribution, dimension)
         ∇ψ = ψ.gradient(conf)
         ∇²ψ = ψ.laplacian(conf)
         ψstatus = WaveFunctionStatus(ψval, ∇ψ, ∇²ψ)
-        walkers[i] = Walker(conf, conf, 1.0, ψstatus, ψstatus)
+        walkers[i] = Walker(conf, ψstatus)
     end
     walkers
 end

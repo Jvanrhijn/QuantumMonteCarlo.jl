@@ -15,7 +15,7 @@ const da = 1e-5
 include("forceutil.jl")
 
 # DMC settings
-τ = 1e-3
+τ = 1e-1
 nwalkers = 25
 num_blocks = 400
 steps_per_block = trunc(Int64, 1/τ)
@@ -129,6 +129,6 @@ energies, errors = QuantumMonteCarlo.run_dmc!(
     5.0; 
     rng=rng, 
     neq=neq, 
-    outfile=ARGS[1],
+    outfile="efftau.hdf5",
     verbosity=:loud
 );

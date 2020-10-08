@@ -26,18 +26,24 @@ function diffuse_walker!(walker, ψ, τ, rng::AbstractRNG)
     
     if acceptance > rand(rng, Float64)
         walker.ψstatus_old.value = ψval
-        walker.ψstatus_old.gradient .= ∇ψ
+        walker.ψstatus_old.gradient = ∇ψ
         walker.ψstatus_old.laplacian = walker.ψstatus.laplacian
-        walker.configuration_old .= x
+        walker.configuration_old = x
 
         walker.ψstatus.value = ψval′
-        walker.ψstatus.gradient .= ∇ψ′
+        walker.ψstatus.gradient = ∇ψ′
         walker.ψstatus.laplacian = ψ.laplacian(x′)
-        walker.configuration .= x′
+        walker.configuration = x′
     end
+
+    # update displacement
+    dx = walker.configuration - walker.configuration_old
+    walker.square_displacement += norm(dx)^2
+    walker.square_displacement_times_acceptance += acceptance*norm(dx)^2
+
 end
 
-function cutoff_velocity(v, τ)
+function cutoff_velocity(v, τ; a=0.1)
     vnorm = norm(v)
-    v * (-1 + sqrt(1 + 2*vnorm^2*τ))/(vnorm^2*τ)
+    v * (-1 + sqrt(1 + 2*a*vnorm^2*τ))/(a*vnorm^2*τ)
 end

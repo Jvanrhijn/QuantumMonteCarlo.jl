@@ -49,8 +49,15 @@ function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng
 
                 el′ = model.hamiltonian(walker.ψstatus, walker.configuration) / walker.ψstatus.value
 
+                # compute effective time step
+                if walker.square_displacement > 0.0
+                    τₑ = τ * walker.square_displacement_times_acceptance / walker.square_displacement
+                else
+                    τₑ = τ
+                end
+                
                 # compute branching factor                
-                s = (eref - 0.5*(el + el′)) * τ
+                s = (eref - 0.5*(el + el′)) * τₑ
 
                 # update walker weight
                 walker.weight *= exp(s)
