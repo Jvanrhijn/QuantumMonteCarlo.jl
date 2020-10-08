@@ -12,7 +12,7 @@ mutable struct Walker
     square_displacement::Float64
     square_displacement_times_acceptance::Float64
 
-    Walker(configuration, ψstatus) = new(configuration, configuration, 1.0, ψstatus, ψstatus, 0.0, 0.0)
+    Walker(configuration, ψstatus) = new(configuration, deepcopy(configuration), 1.0, ψstatus, deepcopy(ψstatus), 0.0, 0.0)
 end
 
 # A fat walker is a walker along with a dictionary

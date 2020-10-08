@@ -24,6 +24,7 @@ function node_warp(x, ψ, ∇ψ, ψ′, ∇ψ′, τ)
     n = ∇ψ / norm(∇ψ)
     u, uderiv = cutoff_tanh(d; a=√τ)
     xwarp = x .+ (d - d′) * u * sign(ψ′) * n′
+   
     jac = 1 - u + sign(ψ′*ψ) * dot(n, n′) * (u + (d - d′)*uderiv)
     xwarp, jac
 end
@@ -41,15 +42,12 @@ function gradel_warp(fwalker, model, eref, ψt′, τ)
     ψ′ = last(fwalker.data["ψ′"])
     ∇ψ′ = last(fwalker.data["∇ψ′"])
     x = walker.configuration
+
     xwarp, jac = node_warp(x, ψ, ∇ψ, ψ′, ∇ψ′, τ)
 
-    #el = model.hamiltonian(walker.ψstatus, x) / ψ
     el = last(fwalker.data["Local energy"])
     el′ = model.hamiltonian_recompute(ψt′, xwarp) / ψt′.value(xwarp)
     
-    if xwarp[1] < 0.0
-        println("warped: $(ψt′.value(xwarp))    $(xwarp) | non-warped: $(model.wave_function.value(x))    $(x)")
-    end
     (el′ - el) / da
 end
 
@@ -61,10 +59,6 @@ function gradpsi_sec(fwalker, model, eref, ψ′)
     ψ′.gradient(fwalker.walker.configuration)
 end
 
-function psi_sec(fwalker, model, eref, ψ′)
-    ψ′.value(fwalker.walker.configuration_old)
-end
-
 function gradpsi_sec_old(fwalker, model, eref, ψ′)
     ψ′.gradient(fwalker.walker.configuration_old)
 end
@@ -73,18 +67,18 @@ function psi_sec_old(fwalker, model, eref, ψ′)
     ψ′.value(fwalker.walker.configuration_old)
 end
 
-function gradpsi_sec_prev(fwalker, model, eref, ψ′)
-    ψ′.gradient(fwalker.walker.configuration_old)
-end
-
 function grads(fwalker, model, eref, ψ′, τ)
     walker = fwalker.walker
     ∇ₐel = last(fwalker.data["grad el"])
     xprev = fwalker.walker.configuration_old
-    el_prev = model.hamiltonian(walker.ψstatus_old, xprev) / walker.ψstatus_old.value
+    x = fwalker.walker.configuration
+    el_prev_cached = model.hamiltonian(walker.ψstatus_old, xprev) / walker.ψstatus_old.value
+    el_prev = model.hamiltonian_recompute(model.wave_function, xprev) / model.wave_function.value(xprev)
     el_prev′ = model.hamiltonian_recompute(ψ′, xprev) / ψ′.value(xprev)
     ∇ₐel_prev = (el_prev′ .- el_prev) / da
-    return -0.5 * (∇ₐel .+ ∇ₐel_prev) * τ
+
+    grad = -0.5 * (∇ₐel .+ ∇ₐel_prev) * τ
+    return grad
 end
 
 function grads_warp(fwalker, model, eref, ψt′, τ)
@@ -111,11 +105,13 @@ function grads_warp(fwalker, model, eref, ψt′, τ)
     xwarp , _ = node_warp(x, ψ, ∇ψ, ψ′, ∇ψ′, τ)
     xwarpprev, _ = node_warp(xprev, ψprev, ∇ψprev, ψ′prev, ∇ψ′prev, τ)
 
-    el_prev = model.hamiltonian(walker.ψstatus_old, xprev) / walker.ψstatus_old.value
+    #el_prev = model.hamiltonian(walker.ψstatus_old, xprev) / walker.ψstatus_old.value
+    el_prev = model.hamiltonian_recompute(model.wave_function, xprev) / model.wave_function.value(xprev)
     el_prev′ = model.hamiltonian_recompute(ψt′, xwarpprev) / ψt′.value(xwarpprev)
 
     ∇ₐel_prev_warp = (el_prev′ - el_prev) / da
 
+    #println("$el_prev′     $(xwarpprev)")
     return -0.5 * (∇ₐel_warp + ∇ₐel_prev_warp) * τ
 end
 
@@ -146,8 +142,6 @@ function gradt(fwalker, model, eref, ψ′, τ)
     t′ = -1/(2.0τ) * norm(u′)^2
 
     return (t′ - t) / da
-
-    #return dot(x′ - x, ∇ₐv) - τ/2 * ∇ₐnormvsq
 
 end
 
@@ -194,8 +188,6 @@ function gradt_warp(fwalker, model, eref, ψt′, τ)
 
     return (t′ - t) / da
 
-    #return dot(x - xprev, ∇ₐv) - τ/2 * ∇ₐnormvsq
-
 end
 
 function gradj(fwalker, model, eref, τ)
@@ -214,7 +206,7 @@ function gradj(fwalker, model, eref, τ)
     return log(abs(jac)) / da
 end
 
-function grad_logpsi(fwalker, model, eref)
+function grad_logpsi(fwalker, model, eref, ψt′)
     ψ′ = last(fwalker.data["ψ′"])
     ψ = fwalker.walker.ψstatus.value
     (log(abs(ψ′)) - log(abs(ψ))) / da
@@ -232,8 +224,8 @@ function grad_logpsi_warp(fwalker, model, eref, ψt′, τ)
     ∇ψ′ = last(fwalker.data["∇ψ′"])
 
     xwarp, _ = node_warp(x, ψ, ∇ψ, ψ′, ∇ψ′, τ)
-
-    (log(abs(ψt′.value(xwarp))) - log(abs(ψ))) / da
+    deriv = (log(abs(ψt′.value(xwarp))) - log(abs(ψ))) / da
+    return deriv 
 end
 
 

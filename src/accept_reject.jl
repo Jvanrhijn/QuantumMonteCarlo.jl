@@ -23,18 +23,19 @@ function diffuse_walker!(walker, ψ, τ, rng::AbstractRNG)
     if ψval′ == 0.0 || sign(ψval′) != sign(ψval)
         acceptance = 0.0
     end
-    
-    if acceptance > rand(rng, Float64)
-        walker.ψstatus_old.value = ψval
-        walker.ψstatus_old.gradient = ∇ψ
-        walker.ψstatus_old.laplacian = walker.ψstatus.laplacian
-        walker.configuration_old = x
 
+    walker.ψstatus_old.value = ψval
+    walker.ψstatus_old.gradient = ∇ψ
+    walker.ψstatus_old.laplacian = walker.ψstatus.laplacian
+    walker.configuration_old = x
+
+    if acceptance > rand(rng, Float64)
         walker.ψstatus.value = ψval′
         walker.ψstatus.gradient = ∇ψ′
         walker.ψstatus.laplacian = ψ.laplacian(x′)
         walker.configuration = x′
     end
+
 
     # update displacement
     dx = walker.configuration - walker.configuration_old
