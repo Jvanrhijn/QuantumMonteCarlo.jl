@@ -15,12 +15,12 @@ const da = 1e-5
 include("forceutil.jl")
 
 # DMC settings
-τ = 1e-2
-nwalkers = 10
+τ = 1e-3
+nwalkers = 25
 num_blocks = 100
 steps_per_block = trunc(Int64, 1/τ)
 neq = 10
-lag = steps_per_block
+lag = 2*steps_per_block
 
 # Trial wave function
 function ψpib(x::Array{Float64})
