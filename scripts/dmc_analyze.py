@@ -30,7 +30,7 @@ def error(block_means, weights=None):
         weights = np.ones(block_means.shape)
     mean = np.average(block_means, weights=weights)
     meansq = np.average(block_means**2, weights=weights)
-    return math.sqrt((meansq - mean**2) / len(block_means))
+    return math.sqrt(abs(meansq - mean**2) / len(block_means))
 
 
 # function to compute error bar given a slice of local force

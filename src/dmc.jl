@@ -9,6 +9,7 @@ using Dates
 
 function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng=MersenneTwister(0), neq=0, outfile=Nothing, verbosity=:silent)
     nwalkers = length(fat_walkers)
+    trial_energy = eref
 
     accumulator = Accumulator(fat_walkers)
 
@@ -36,8 +37,8 @@ function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng
         block_weight = zeros(steps_per_block)
 
         for b = 1:steps_per_block
-            local_energy_ensemble = zeros(nwalkers)
-            weight_ensemble = zeros(nwalkers)
+            local_energy_ensemble = zeros(length(fat_walkers))
+            weight_ensemble = zeros(length(fat_walkers))
             
             # TODO thread-safe parallelism
             for (i, fwalker) in collect(enumerate(fat_walkers))
@@ -57,10 +58,25 @@ function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng
                 end
                 
                 # compute branching factor                
-                s = (eref - 0.5*(el + el′)) * τₑ
+                if j > neq
+                    ebest = energy_estimate[j - neq]
+                else
+                    ebest = eref
+                end
+
+                # umrigar's branching factor cutoff
+                v = walker.ψstatus.gradient / walker.ψstatus.value
+                vold = walker.ψstatus_old.gradient / walker.ψstatus_old.value
+                ratio = norm(cutoff_velocity(v, τₑ)) / norm(v)
+                ratio_old = norm(cutoff_velocity(vold, τₑ)) / norm(vold)
+
+                s = (eref - ebest) + (ebest - el)*ratio_old
+                s′ = (eref - ebest) + (ebest - el′)*ratio
+
+                branching_factor = 0.5τₑ * (s + s′) 
 
                 # update walker weight
-                walker.weight *= exp(s)
+                walker.weight *= exp(branching_factor)
 
                 # store local energy
                 local_energy_ensemble[i] = el′
@@ -133,13 +149,14 @@ function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng
                 err = 0.0
             end
             time_elapsed = now() - start_time
-            printfmt("Time elapsed: {} | Block: {}/{} | Energy estimate: {:.5f} +- {:.5f} | Block energy: {:.5f} | Trial energy: {:.5f}\n",
+            printfmt("Time elapsed: {} | Block: {}/{} | Energy estimate: {:.5f} +- {:.5f} | Block energy: {:.5f} | Reference energy: {:.5f} | Trial energy: {:.5f}\n",
                 format_duration(time_elapsed, "HH:MM:SS"),
                 lpad(string(j), num_digits(num_blocks + neq), '0'),
                 num_blocks + neq,
                 energy,
                 err,
                 block_energy,
+                eref,
                 first(energy_estimate)
             )
             flush(stdout)

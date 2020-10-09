@@ -11,3 +11,27 @@ function stochastic_reconfiguration!(walkers, rng::AbstractRNG)
     
     walkers .= new_walkers
 end
+
+function simple_branching!(walkers, rng::AbstractRNG)
+    max_copies = 50
+    to_delete = []
+    copies = []
+    #weights = map(w.walker.weight, walkers)
+    for (i, fwalker) in enumerate(walkers)
+        walker = fwalker.walker
+        if walker.weight > 1.0
+            num_copies = trunc(Int64, walker.weight + rand(rng)) - 1
+            println(num_copies)
+            if num_copies > max_copies
+                throw(DomainError("Too many walker copies made"))
+            end
+            push!(copies, deepcopy(fwalker))
+        elseif walker.weight < rand(rng)
+            push!(to_delete, i)
+        end
+    end
+    # delete walkers-to-delete
+    deleteat!(walkers, to_delete)
+    # append copies
+    append!(walkers, copies)
+end

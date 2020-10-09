@@ -43,8 +43,3 @@ function diffuse_walker!(walker, ψ, τ, rng::AbstractRNG)
     walker.square_displacement_times_acceptance += acceptance*norm(dx)^2
 
 end
-
-function cutoff_velocity(v, τ; a=1)
-    vnorm = norm(v)
-    v * (-1 + sqrt(1 + 2*a*vnorm^2*τ))/(a*vnorm^2*τ)
-end

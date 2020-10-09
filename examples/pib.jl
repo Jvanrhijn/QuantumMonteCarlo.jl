@@ -1,5 +1,4 @@
 using Distributions
-using Plots
 using DataStructures
 using Random
 using LinearAlgebra
@@ -17,28 +16,50 @@ include("forceutil.jl")
 # DMC settings
 τ = 1e-2
 nwalkers = 25
-num_blocks = 400
+num_blocks = 100
 steps_per_block = trunc(Int64, 1/τ)
 neq = 10
 lag = steps_per_block
 
 # Trial wave function
 function ψpib(x::Array{Float64})
-    max(0, x[1].*(a .- x[1]))
+    #max(0, sin(pi*x[1])/a)
+    #max(0, 4*x[1].*(a .- x[1]) + sin(pi*x[1]/a))
+    max(0, x[1]*(a - x[1]))
+    #max(0, (1 + x[1])*sin(π*x[1]/a))
 end
 
 function ψpib′(x::Array{Float64})
-    max(0, (x[1] + da/2).*(a + da /2 .- x[1]))
+    #max(0, sin(pi*x[1]/(a+da)))
+    #max(0, 4*x[1].*(a + da .- x[1]) + sin(pi*x[1]/(a+da)))
+    max(0, (x[1] + da/2)*(a + da/2 - x[1]))
+    #max(0, (1 + x[1])*sin(π*x[1]/(a + da)))
 end
 
 ψtrial = WaveFunction(
     ψpib,
+    #x -> π/a*cos.(π*x/a).*(1 .+ x) + sin.(π*x/a),
+    #x -> -π*(π*(x[1] + 1)*sin(π*x[1]/a) - 2a*cos(π*x[1]/a))/a^2
+    #x -> pi*cos.(pi*x/a)/a,
+    #x -> -(pi/a)^2*sin(pi*x[1]/a)
+    #x -> 4*(a .- 2x) + π/a*cos.(pi*x/a),
+    #x -> -8.0 - (π/a)^2*sin(pi*x[1]/a)
+    #x -> QuantumMonteCarlo.gradient_fd(ψpib, x),
+    #x -> QuantumMonteCarlo.laplacian_fd(ψpib, x)
     x -> a .- 2.0x,
     x -> -2.0,
 )
 
 ψtrial′ = WaveFunction(
     ψpib′,
+    #x -> π/(a+da)*cos.(π*x/(a+da)).*(1 .+ x) + sin.(π*x/(a+da)),
+    #x -> -π*(π*(x[1] + 1)*sin(π*x[1]/(a+da)) - 2a*cos(π*x[1]/(a+da)))/(a+da)^2
+    #x -> pi*cos.(pi*x/(a + da))/(a + da),
+    #x -> -(pi/(a + da))^2*sin(pi*x[1]/(a + da))
+    #x -> 4*(a + da .- 2x) + π/(a + da)*cos.(pi*x/(a + da)),
+    #x -> -8.0 - (π/(a+da))^2*sin(pi*x[1]/(a + da))
+    #x -> QuantumMonteCarlo.gradient_fd(ψpib′, x),
+    #x -> QuantumMonteCarlo.laplacian_fd(ψpib′, x),
     x -> a + da .- 2.0x,
     x -> -2.0,
 )
@@ -80,7 +101,7 @@ observables = OrderedDict(
     "sum grad log j" => (fwalker, model, eref) -> gradj(fwalker, model, eref, τ),
 )
 
-rng = MersenneTwister(0)
+rng = MersenneTwister(160224267)
 
 # create "Fat" walkers
 walkers = QuantumMonteCarlo.generate_walkers(nwalkers, ψtrial, rng, Uniform(0., 1.), 1)
@@ -126,9 +147,9 @@ energies, errors = QuantumMonteCarlo.run_dmc!(
     τ, 
     num_blocks, 
     steps_per_block, 
-    5.0; 
+    4.95159,
     rng=rng, 
     neq=neq, 
-    outfile=ARGS[1],
+    outfile="test.hdf5", #ARGS[1],
     verbosity=:loud
 );
