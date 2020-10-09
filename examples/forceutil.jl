@@ -131,7 +131,6 @@ function gradt(fwalker, model, eref, ψ′, τ)
     ψsec = ψ′.value(x)
     vsec = ∇ψsec / ψsec
 
-
     u = x′ - x - v*τ
     u′ = x′ - x - vsec*τ
 

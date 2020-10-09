@@ -16,7 +16,7 @@ include("forceutil.jl")
 # DMC settings
 τ = 1e-2
 nwalkers = 25
-num_blocks = 100
+num_blocks = 400
 steps_per_block = trunc(Int64, 1/τ)
 neq = 10
 lag = steps_per_block
