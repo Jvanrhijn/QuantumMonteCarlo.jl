@@ -70,8 +70,8 @@ function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng
                 ratio = norm(cutoff_velocity(v, τₑ)) / norm(v)
                 ratio_old = norm(cutoff_velocity(vold, τₑ)) / norm(vold)
 
-                s = (eref - ebest) + (ebest - el)*ratio_old
-                s′ = (eref - ebest) + (ebest - el′)*ratio
+                s = (eref - el)*ratio_old
+                s′ = (eref - el′)*ratio
 
                 branching_factor = 0.5τₑ * (s + s′) 
 
@@ -134,8 +134,8 @@ function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng
 
             total_weight += block_weight
 
-            #eref = 0.5 * (eref + energy_estimate[n+1])
-            eref = 0.5 * (eref + block_energy)
+            eref = 0.5 * (eref + energy_estimate[n+1])
+            #eref = 0.5 * (eref + block_energy)
 
         end
 

@@ -8,7 +8,7 @@ using StatsBase
 using QuantumMonteCarlo
 
 # Force computation settings and import
-const a = 1.0
+const a = 2.0
 const da = 1e-5
 
 include("forceutil.jl")
@@ -16,10 +16,11 @@ include("forceutil.jl")
 # DMC settings
 τ = 1e-2
 nwalkers = 25
-num_blocks = 400
+num_blocks = 160
 steps_per_block = trunc(Int64, 1/τ)
 neq = 10
 lag = steps_per_block
+eref = 5.0/a^2
 
 # Trial wave function
 function ψpib(x::Array{Float64})
@@ -147,7 +148,7 @@ energies, errors = QuantumMonteCarlo.run_dmc!(
     τ, 
     num_blocks, 
     steps_per_block, 
-    4.95159,
+    eref,
     rng=rng, 
     neq=neq, 
     outfile="test.hdf5", #ARGS[1],
