@@ -8,7 +8,8 @@ include("accept_reject.jl")
 include("branching.jl")
 include("dmc.jl")
 include("accumulator.jl")
+include("vmc.jl")
 
-export run_dmc!, WaveFunction, Model, Walker, FatWalker, gradient_fd, laplacian_fd
+export run_vmc!, run_dmc!, WaveFunction, Model, Walker, FatWalker, gradient_fd, laplacian_fd
 
 end

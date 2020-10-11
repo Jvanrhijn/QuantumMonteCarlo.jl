@@ -7,7 +7,7 @@ using Formatting
 using Dates
 
 
-function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng=MersenneTwister(0), neq=0, outfile=Nothing, verbosity=:silent)
+function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng=MersenneTwister(0), neq=0, outfile=Nothing, verbosity=:silent, brancher=stochastic_reconfiguration!)
     nwalkers = length(fat_walkers)
     trial_energy = eref
 
@@ -88,7 +88,7 @@ function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng
         block_weight = mean(block_weight)
 
         # perform branching
-        stochastic_reconfiguration!(fat_walkers, rng)
+        brancher(fat_walkers, rng)
 
         # only update energy esimate after block has run
         if j > neq

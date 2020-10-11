@@ -8,19 +8,19 @@ using StatsBase
 using QuantumMonteCarlo
 
 # Force computation settings and import
-const a = 1.0
-const da = 1e-5
+const a = 0.5
+const da = 1e-3
 
 include("forceutil.jl")
 
 # DMC settings
-τ = 1e-3
+τ = 1e-2
 nwalkers = 25
 num_blocks = 1000
-steps_per_block = trunc(Int64, 1/10τ)
+steps_per_block = trunc(Int64, 1/τ)
 neq = 10
 lag = trunc(Int64, steps_per_block)
-eref = 5.0/a^2
+eref = 5.0/(2a)^2
 
 # Trial wave function
 function ψpib(x::Array{Float64})
@@ -28,7 +28,7 @@ function ψpib(x::Array{Float64})
     #max(0, 4*x[1].*(a .- x[1]) + sin(pi*x[1]/a))
     #max(0, x[1]*(a - x[1]))
     #max(0, (1 + x[1])*sin(π*x[1]/a))
-    max(0, (0.5a)^2 - x[1]^2)
+    max(0, a^2 - x[1]^2)
 end
 
 function ψpib′(x::Array{Float64})
@@ -37,7 +37,7 @@ function ψpib′(x::Array{Float64})
     #max(0, (x[1] + da/2)*(a + da/2 - x[1]))
     #max(0, (1 + x[1])*sin(π*x[1]/(a + da)))
     a′ = a + da
-    max(0, (0.5a′)^2 - x[1]^2)
+    max(0, (a′)^2 - x[1]^2)
 end
 
 ψtrial = WaveFunction(
@@ -111,7 +111,7 @@ observables = OrderedDict(
 rng = MersenneTwister(160224267)
 
 # create "Fat" walkers
-walkers = QuantumMonteCarlo.generate_walkers(nwalkers, ψtrial, rng, Uniform(-0.5a, 0.5a), 1)
+walkers = QuantumMonteCarlo.generate_walkers(nwalkers, ψtrial, rng, Uniform(-a, a), 1)
 
 
 fat_walkers = [QuantumMonteCarlo.FatWalker(

@@ -35,3 +35,9 @@ function simple_branching!(walkers, rng::AbstractRNG)
     # append copies
     append!(walkers, copies)
 end
+
+function no_brancher!(walkers, rng::AbstractRNG)
+    for walker in walkers
+        walker.walker.weight = 1.0
+    end
+end

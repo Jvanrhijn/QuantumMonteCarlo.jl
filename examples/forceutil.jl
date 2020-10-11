@@ -20,6 +20,7 @@ end
 function node_warp(x, ψ, ∇ψ, ψ′, ∇ψ′, τ)
     d = abs(ψ) / norm(∇ψ)
     d′ = abs(ψ′) / norm(∇ψ′)
+
     n′ = ∇ψ′ / norm(∇ψ′)
     n = ∇ψ / norm(∇ψ)
     u, uderiv = cutoff_tanh(d; a=√τ)
