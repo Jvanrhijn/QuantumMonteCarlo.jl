@@ -6,7 +6,7 @@ function stochastic_reconfiguration!(walkers, rng::AbstractRNG)
     new_walkers = [deepcopy(w) for w in new_walkers]
     
     for walker in new_walkers
-        walker.walker.weight = global_weight
+        walker.walker.weight = 1#global_weight
     end
     
     walkers .= new_walkers

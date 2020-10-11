@@ -14,7 +14,7 @@ const da = 1e-5
 include("forceutil.jl")
 
 # DMC settings
-τ = 1e-2
+τ = 1e-4
 nwalkers = 25
 num_blocks = 20000
 steps_per_block = trunc(Int64, 1/τ)

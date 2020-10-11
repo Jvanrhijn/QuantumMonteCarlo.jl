@@ -126,7 +126,7 @@ function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng
                 err = 0.0
             end
             time_elapsed = now() - start_time
-            printfmt("Time elapsed: {} | Block: {}/{} | Energy estimate: {:.5f} +- {:.5f} | Block energy: {:.5f} | Reference energy: {:.5f} | Trial energy: {:.5f}\n",
+            printfmt("Time elapsed: {} | Block: {}/{} | Energy estimate: {:.5f} +- {:.5f} | Block energy: {:.5f} | Reference energy: {:.5f} | Trial energy: {:.5f} | Total weight {:.5f} | Block weight {:.5f} \n",
                 format_duration(time_elapsed, "HH:MM:SS"),
                 lpad(string(j), num_digits(num_blocks + neq), '0'),
                 num_blocks + neq,
@@ -134,7 +134,9 @@ function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng
                 err,
                 block_energy,
                 eref,
-                first(energy_estimate)
+                first(energy_estimate),
+                total_weight,
+                block_weight
             )
             flush(stdout)
         end
