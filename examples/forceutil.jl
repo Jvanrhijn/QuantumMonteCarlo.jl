@@ -278,6 +278,20 @@ function grad_logpsi_warp(fwalker, model, eref, ψt′, τ)
     return deriv 
 end
 
+function psi_history(fwalker, model, eref)
+    return fwalker.walker.ψstatus_old.value
+end
+
+function psi_history′(fwalker, model, eref, ψt′)
+    return ψt′.value(fwalker.walker.configuration_old)
+end
+
+function grad_logpsisquared_old(fwalker, model, eref)
+    ψold = first(fwalker.data["psi history"])
+    ψold′ = first(fwalker.data["psi history (secondary)"])
+    return (log(abs(ψold′^2)) - log(abs(ψold^2))) / da
+end
+
 
 function get_weights(fname)
     h5open(fname, "r") do file

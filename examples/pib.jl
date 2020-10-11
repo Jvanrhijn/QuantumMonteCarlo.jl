@@ -14,12 +14,12 @@ const da = 1e-5
 include("forceutil.jl")
 
 # DMC settings
-τ = 1e-4
+τ = 1e-3
 nwalkers = 25
-num_blocks = 20000
-steps_per_block = trunc(Int64, 1/τ)
+num_blocks = 1000
+steps_per_block = trunc(Int64, 1/10τ)
 neq = 10
-lag = steps_per_block
+lag = trunc(Int64, steps_per_block)
 eref = 5.0/a^2
 
 # Trial wave function
@@ -103,6 +103,9 @@ observables = OrderedDict(
     "grad t (warp, no cutoff)" => (fwalker, model, eref) -> gradt_warp(fwalker, model, eref, ψtrial′, τ),
     "grad log j" => (fwalker, model, eref) -> gradj(fwalker, model, eref, τ),
     "sum grad log j" => (fwalker, model, eref) -> gradj(fwalker, model, eref, τ),
+    "psi history" => psi_history,
+    "psi history (secondary)" => (fwalker, model, eref) -> psi_history′(fwalker, model, eref, ψtrial′),
+    "grad log psi squared old" => grad_logpsisquared_old,
 )
 
 rng = MersenneTwister(160224267)
@@ -123,7 +126,9 @@ fat_walkers = [QuantumMonteCarlo.FatWalker(
         "grad t (no cutoff)" => CircularBuffer(lag),
         "grad s (warp, no cutoff)" => CircularBuffer(lag),
         "grad t (warp, no cutoff)" => CircularBuffer(lag),
-        "sum grad log j" => CircularBuffer(lag)
+        "sum grad log j" => CircularBuffer(lag),
+        "psi history" => CircularBuffer(lag),
+        "psi history (secondary)" => CircularBuffer(lag),
     ),
     [
         ("Local energy", "grad log psi"),
@@ -138,11 +143,12 @@ fat_walkers = [QuantumMonteCarlo.FatWalker(
         ("Local energy", "grad t (warp, no cutoff)"),
         ("Local energy", "grad log j"),
         ("Local energy", "sum grad log j"),
+        ("Local energy", "grad log psi squared old")
     ]
     ) for walker in walkers
 ]
 
-fat_walkers = [QuantumMonteCarlo.FatWalker(walker) for walker in walkers]
+#fat_walkers = [QuantumMonteCarlo.FatWalker(walker) for walker in walkers]
 
 ### Actually run DMC
 energies, errors = QuantumMonteCarlo.run_dmc!(
@@ -154,6 +160,6 @@ energies, errors = QuantumMonteCarlo.run_dmc!(
     eref,
     rng=rng, 
     neq=neq, 
-    #outfile="test.hdf5", #ARGS[1],
+    outfile="test.hdf5", #ARGS[1],
     verbosity=:loud
 );
