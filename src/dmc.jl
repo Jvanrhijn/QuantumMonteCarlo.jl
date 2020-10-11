@@ -18,7 +18,7 @@ function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng
     variance_estimate = zeros(num_blocks + 1)
     energy_estimate[1] = eref
 
-    total_weight = nwalkers * steps_per_block
+    total_weight = 1
 
     # open output file
     if outfile != Nothing
@@ -50,15 +50,6 @@ function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng
 
                 el′ = model.hamiltonian(walker.ψstatus, walker.configuration) / walker.ψstatus.value
 
-              
-                # compute branching factor                
-                if j > neq
-                    ebest = energy_estimate[j - neq]
-                else
-                    ebest = eref
-                end
-
-
                 # store local energy
                 local_energy_ensemble[i] = el′
                 weight_ensemble[i] = walker.weight
@@ -77,7 +68,7 @@ function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng
             ensemble_energy = mean(local_energy_ensemble, Weights(weight_ensemble))
 
             block_energy[b] = ensemble_energy
-            block_weight[b] = sum(weight_ensemble)
+            block_weight[b] = mean(weight_ensemble)
 
             if j <= neq
                 eref = 0.5 * (eref + ensemble_energy)
@@ -94,7 +85,7 @@ function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng
         end
 
         block_energy = mean(block_energy, Weights(block_weight))
-        block_weight = sum(block_weight)
+        block_weight = mean(block_weight)
 
         # perform branching
         stochastic_reconfiguration!(fat_walkers, rng)
@@ -102,21 +93,25 @@ function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng
         # only update energy esimate after block has run
         if j > neq
             n = j - neq
-            
-            energy_estimate[n+1] = (total_weight*energy_estimate[n] + block_weight*block_energy) /
-                (total_weight + block_weight)
 
-            variance_estimate[n+1] = variance_estimate[n] + 
-                (block_weight*(block_energy - energy_estimate[n])*(block_energy - energy_estimate[n+1]) -
-                variance_estimate[n]) /
-                (total_weight + block_weight)
+            s = variance_estimate[n] * total_weight
+            total_weight += block_weight
+            energy_estimate[n+1] = energy_estimate[n] + block_weight / total_weight * (block_energy - energy_estimate[n])
+            variance_estimate[n+1] = (s + block_weight * (block_energy - energy_estimate[n])*(block_energy - energy_estimate[n+1])) / total_weight
+            
+            #energy_estimate[n+1] = (total_weight*energy_estimate[n] + block_weight*block_energy) /
+            #    (total_weight + block_weight)
+
+            #variance_estimate[n+1] = variance_estimate[n] + 
+            #    (block_weight*(block_energy - energy_estimate[n])*(block_energy - energy_estimate[n+1]) -
+            #    variance_estimate[n]) /
+            #    (total_weight + block_weight)
 
             error_estimate[n+1] = sqrt(variance_estimate[n+1] / n)                
 
-            total_weight += block_weight
+            #total_weight += block_weight
 
             eref = 0.5 * (eref + energy_estimate[n+1])
-            #eref = 0.5 * (eref + block_energy)
 
         end
 
