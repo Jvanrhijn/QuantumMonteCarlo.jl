@@ -46,17 +46,11 @@ function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng
                 el = model.hamiltonian(walker.ψstatus, walker.configuration) / walker.ψstatus.value
 
                 # perform drift-diffuse step
-                diffuse_walker!(walker, model.wave_function, τ, rng)
+                diffuse_walker!(walker, model.wave_function, τ, eref, model, rng)
 
                 el′ = model.hamiltonian(walker.ψstatus, walker.configuration) / walker.ψstatus.value
 
-                # compute effective time step
-                if walker.square_displacement > 0.0
-                    τₑ = τ * walker.square_displacement_times_acceptance / walker.square_displacement
-                else
-                    τₑ = τ
-                end
-                
+              
                 # compute branching factor                
                 if j > neq
                     ebest = energy_estimate[j - neq]
@@ -64,19 +58,6 @@ function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng
                     ebest = eref
                 end
 
-                # umrigar's branching factor cutoff
-                v = walker.ψstatus.gradient / walker.ψstatus.value
-                vold = walker.ψstatus_old.gradient / walker.ψstatus_old.value
-                ratio = norm(cutoff_velocity(v, τₑ)) / norm(v)
-                ratio_old = norm(cutoff_velocity(vold, τₑ)) / norm(vold)
-
-                s = (eref - el)*ratio_old
-                s′ = (eref - el′)*ratio
-
-                branching_factor = 0.5τₑ * (s + s′) 
-
-                # update walker weight
-                walker.weight *= exp(branching_factor)
 
                 # store local energy
                 local_energy_ensemble[i] = el′

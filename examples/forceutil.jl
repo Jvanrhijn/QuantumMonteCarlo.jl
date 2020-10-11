@@ -97,8 +97,8 @@ function grads(fwalker, model, eref, ψ′, τ)
     ratio = norm(QuantumMonteCarlo.cutoff_velocity(v, τₑ)) / norm(v)
     ratio_old = norm(QuantumMonteCarlo.cutoff_velocity(vold, τₑ)) / norm(vold)
 
-    s = (eref - el) * ratio
-    sprev = (eref - el_prev) * ratio_old
+    s = (eref - el)# * ratio
+    sprev = (eref - el_prev)# * ratio_old
     b = 0.5 * (s + sprev) * τₑ
 
     vsec = ∇ψsec / ψsec
@@ -106,8 +106,8 @@ function grads(fwalker, model, eref, ψ′, τ)
     ratio_sec = norm(QuantumMonteCarlo.cutoff_velocity(vsec, τₑ)) / norm(vsec)
     ratio_sec_old = norm(QuantumMonteCarlo.cutoff_velocity(vsec_old, τₑ)) / norm(vsec_old)
 
-    s′ = (eref - el′) * ratio_sec
-    sprev′ = (eref - el_prev′) * ratio_sec_old
+    s′ = (eref - el′)# * ratio_sec
+    sprev′ = (eref - el_prev′)# * ratio_sec_old
     b′ = 0.5 * (s′ + sprev′) * τₑ
     
     #∇ₐel_prev = (el_prev′ .- el_prev) / da
@@ -152,14 +152,14 @@ function grads_warp(fwalker, model, eref, ψt′, τ)
 
     ratio = QuantumMonteCarlo.cutoff_velocity(∇ψ / ψ, τₑ)
     ratio_prev = QuantumMonteCarlo.cutoff_velocity(∇ψprev / ψprev, τₑ)
-    sprev = (eref - el_prev) * ratio_prev
-    s = (eref - el) * ratio
+    sprev = (eref - el_prev)# * ratio_prev
+    s = (eref - el)# * ratio
     b = 0.5τₑ * (s + sprev)
     
     ratio = QuantumMonteCarlo.cutoff_velocity(∇ψ′ / ψ′, τₑ)
     ratio_prev = QuantumMonteCarlo.cutoff_velocity(∇ψ′prev / ψ′prev, τₑ)
-    sprev′ = (eref - el_prev′) * ratio_prev
-    s′ = (eref - el′) * ratio
+    sprev′ = (eref - el_prev′)# * ratio_prev
+    s′ = (eref - el′)# * ratio
     b′ = 0.5τₑ * (sprev′ + s′)
 
     #println("$el_prev′     $(xwarpprev)")

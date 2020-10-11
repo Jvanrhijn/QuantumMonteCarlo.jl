@@ -8,15 +8,15 @@ using StatsBase
 using QuantumMonteCarlo
 
 # Force computation settings and import
-const a = 2.0
+const a = 1.0
 const da = 1e-5
 
 include("forceutil.jl")
 
 # DMC settings
-τ = 1e-2
+τ = 2e-3
 nwalkers = 25
-num_blocks = 160
+num_blocks = 1000
 steps_per_block = trunc(Int64, 1/τ)
 neq = 10
 lag = steps_per_block
@@ -26,15 +26,18 @@ eref = 5.0/a^2
 function ψpib(x::Array{Float64})
     #max(0, sin(pi*x[1])/a)
     #max(0, 4*x[1].*(a .- x[1]) + sin(pi*x[1]/a))
-    max(0, x[1]*(a - x[1]))
+    #max(0, x[1]*(a - x[1]))
     #max(0, (1 + x[1])*sin(π*x[1]/a))
+    max(0, (0.5a)^2 - x[1]^2)
 end
 
 function ψpib′(x::Array{Float64})
     #max(0, sin(pi*x[1]/(a+da)))
     #max(0, 4*x[1].*(a + da .- x[1]) + sin(pi*x[1]/(a+da)))
-    max(0, (x[1] + da/2)*(a + da/2 - x[1]))
+    #max(0, (x[1] + da/2)*(a + da/2 - x[1]))
     #max(0, (1 + x[1])*sin(π*x[1]/(a + da)))
+    a′ = a + da
+    max(0, (0.5a′)^2 - x[1]^2)
 end
 
 ψtrial = WaveFunction(
@@ -47,8 +50,8 @@ end
     #x -> -8.0 - (π/a)^2*sin(pi*x[1]/a)
     #x -> QuantumMonteCarlo.gradient_fd(ψpib, x),
     #x -> QuantumMonteCarlo.laplacian_fd(ψpib, x)
-    x -> a .- 2.0x,
-    x -> -2.0,
+    x -> -2x,
+    x -> -2
 )
 
 ψtrial′ = WaveFunction(
@@ -61,8 +64,8 @@ end
     #x -> -8.0 - (π/(a+da))^2*sin(pi*x[1]/(a + da))
     #x -> QuantumMonteCarlo.gradient_fd(ψpib′, x),
     #x -> QuantumMonteCarlo.laplacian_fd(ψpib′, x),
-    x -> a + da .- 2.0x,
-    x -> -2.0,
+    x -> -2x,
+    x -> -2
 )
 
 # Setting up the hamiltonian
@@ -105,7 +108,7 @@ observables = OrderedDict(
 rng = MersenneTwister(160224267)
 
 # create "Fat" walkers
-walkers = QuantumMonteCarlo.generate_walkers(nwalkers, ψtrial, rng, Uniform(0., 1.), 1)
+walkers = QuantumMonteCarlo.generate_walkers(nwalkers, ψtrial, rng, Uniform(-0.5a, 0.5a), 1)
 
 
 fat_walkers = [QuantumMonteCarlo.FatWalker(
@@ -139,7 +142,7 @@ fat_walkers = [QuantumMonteCarlo.FatWalker(
     ) for walker in walkers
 ]
 
-#fat_walkers = [QuantumMonteCarlo.FatWalker(walker) for walker in walkers]
+fat_walkers = [QuantumMonteCarlo.FatWalker(walker) for walker in walkers]
 
 ### Actually run DMC
 energies, errors = QuantumMonteCarlo.run_dmc!(
@@ -151,6 +154,6 @@ energies, errors = QuantumMonteCarlo.run_dmc!(
     eref,
     rng=rng, 
     neq=neq, 
-    outfile="test.hdf5", #ARGS[1],
+    #outfile="test.hdf5", #ARGS[1],
     verbosity=:loud
 );
