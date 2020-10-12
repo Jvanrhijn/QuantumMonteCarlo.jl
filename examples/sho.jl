@@ -8,72 +8,48 @@ using StatsBase
 using QuantumMonteCarlo
 
 # Force computation settings and import
-const a = 2
-const da = 1e-2
+a = 1
+da = 1e-2
+
+
+# Setting up the hamiltonianj
+hamiltonian(ψstatus, x) = -0.5*ψstatus.laplacian + 0.5 * a^2 * norm(x)^2*ψstatus.value
+hamiltonian_recompute(ψ, x) = -0.5*ψ.laplacian(x) + 0.5 * a^2 * norm(x)^2*ψ.value(x)
+hamiltonian′(ψstatus, x) = -0.5*ψstatus.laplacian + 0.5 * (a + da)^2 * norm(x)^2*ψstatus.value
+hamiltonian_recompute′(ψ, x) = -0.5*ψ.laplacian(x) + 0.5 * (a + da)^2 * norm(x)^2*ψ.value(x)
 
 include("forceutil.jl")
 
 # DMC settings
-τ = 1e-1
+τ = 1e-3
 nwalkers = 100
-num_blocks = 1000
+num_blocks = 100
 steps_per_block = trunc(Int64, 1/τ)
 neq = 10
-lag = trunc(Int64, steps_per_block)
-eref = 5.0/(2a)^2
+lag = trunc(Int64, 10*steps_per_block)
+eref = 0.625
 
 # Trial wave function
-function ψpib(x::Array{Float64})
-    #max(0, sin(pi*x[1])/a)
-    #max(0, 4*x[1].*(a .- x[1]) + sin(pi*x[1]/a))
-    #max(0, x[1]*(a - x[1]))
-    #max(0, (1 + x[1])*sin(π*x[1]/a))
-    max(0, a^2 - x[1]^2)
-    #max(0, cos(π*x[1]/2a))
+function ψsho(x::Array{Float64})
+    a^0.25 * exp(- a * norm(x)^2)
 end
 
-function ψpib′(x::Array{Float64})
-    #max(0, sin(pi*x[1]/(a+da)))
-    #max(0, 4*x[1].*(a + da .- x[1]) + sin(pi*x[1]/(a+da)))
-    #max(0, (x[1] + da/2)*(a + da/2 - x[1]))
-    #max(0, (1 + x[1])*sin(π*x[1]/(a + da)))
+function ψsho′(x::Array{Float64})
     a′ = a + da
-    max(0, (a′)^2 - x[1]^2)
+    a′^0.25 * exp(- a′ * norm(x)^2)
 end
 
 ψtrial = WaveFunction(
-    ψpib,
-    #x -> π/a*cos.(π*x/a).*(1 .+ x) + sin.(π*x/a),
-    #x -> -π*(π*(x[1] + 1)*sin(π*x[1]/a) - 2a*cos(π*x[1]/a))/a^2
-    #x -> pi*cos.(pi*x/a)/a,
-    #x -> -(pi/a)^2*sin(pi*x[1]/a)
-    #x -> 4*(a .- 2x) + π/a*cos.(pi*x/a),
-    #x -> -8.0 - (π/a)^2*sin(pi*x[1]/a)
-    #x -> QuantumMonteCarlo.gradient_fd(ψpib, x),
-    #x -> π/2a * sin.(π*x/2a),
-    #x -> -(π/2a)^2 * cos(π*x[1]/2a)
-    #x -> QuantumMonteCarlo.laplacian_fd(ψpib, x)
-    x -> -2x,
-    x -> -2
+    ψsho,
+    x -> QuantumMonteCarlo.gradient_fd(ψsho, x),
+    x -> QuantumMonteCarlo.laplacian_fd(ψsho, x),
 )
 
 ψtrial′ = WaveFunction(
-    ψpib′,
-    #x -> π/(a+da)*cos.(π*x/(a+da)).*(1 .+ x) + sin.(π*x/(a+da)),
-    #x -> -π*(π*(x[1] + 1)*sin(π*x[1]/(a+da)) - 2a*cos(π*x[1]/(a+da)))/(a+da)^2
-    #x -> pi*cos.(pi*x/(a + da))/(a + da),
-    #x -> -(pi/(a + da))^2*sin(pi*x[1]/(a + da))
-    #x -> 4*(a + da .- 2x) + π/(a + da)*cos.(pi*x/(a + da)),
-    #x -> -8.0 - (π/(a+da))^2*sin(pi*x[1]/(a + da))
-    #x -> QuantumMonteCarlo.gradient_fd(ψpib′, x),
-    #x -> QuantumMonteCarlo.laplacian_fd(ψpib′, x),
-    x -> -2x,
-    x -> -2
+    ψsho′,
+    x -> QuantumMonteCarlo.gradient_fd(ψsho′, x),
+    x -> QuantumMonteCarlo.laplacian_fd(ψsho′, x),
 )
-
-# Setting up the hamiltonian
-hamiltonian(ψstatus, x) = -0.5*ψstatus.laplacian
-hamiltonian_recompute(ψ, x) = -0.5*ψ.laplacian(x)
 
 model = Model(
     hamiltonian,
@@ -114,7 +90,7 @@ observables = OrderedDict(
 rng = MersenneTwister(160224267)
 
 # create "Fat" walkers
-walkers = QuantumMonteCarlo.generate_walkers(nwalkers, ψtrial, rng, Uniform(-a/2, a/2), 1)
+walkers = QuantumMonteCarlo.generate_walkers(nwalkers, ψtrial, rng, Normal(0, 1), 1)
 
 
 fat_walkers = [QuantumMonteCarlo.FatWalker(
@@ -163,10 +139,7 @@ energies, errors = QuantumMonteCarlo.run_dmc!(
     eref,
     rng=rng, 
     neq=neq, 
-    outfile="test.hdf5", #ARGS[1],
-    brancher=stochastic_reconfiguration!,
-    #brancher=optimal_stochastic_reconfiguration!,
+    outfile="sho.hdf5", #ARGS[1],
     verbosity=:loud,
     branchtime=steps_per_block ÷ 10,
-    #branchtime=1,
 );

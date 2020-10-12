@@ -7,7 +7,7 @@ end
 
 function local_energy_sec(fwalker, model, eref, ψ′)
     x = fwalker.walker.configuration
-    model.hamiltonian_recompute(ψ′, x) / ψ′.value(x)
+    hamiltonian_recompute′(ψ′, x) / ψ′.value(x)
 end
 
 function cutoff_tanh(d; a=0.05)
@@ -47,7 +47,7 @@ function gradel_warp(fwalker, model, eref, ψt′, τ)
     xwarp, jac = node_warp(x, ψ, ∇ψ, ψ′, ∇ψ′, τ)
 
     el = last(fwalker.data["Local energy"])
-    el′ = model.hamiltonian_recompute(ψt′, xwarp) / ψt′.value(xwarp)
+    el′ = hamiltonian_recompute′(ψt′, xwarp) / ψt′.value(xwarp)
     
     (el′ - el) / da
 end
@@ -89,7 +89,7 @@ function grads(fwalker, model, eref, ψ′, τ)
     ∇ψsec_old = last(fwalker.data["∇ψ′_old"])
 
     el_prev = model.hamiltonian_recompute(model.wave_function, xprev) / model.wave_function.value(xprev)
-    el_prev′ = model.hamiltonian_recompute(ψ′, xprev) / ψ′.value(xprev)
+    el_prev′ = hamiltonian_recompute′(ψ′, xprev) / ψ′.value(xprev)
 
     τₑ = τ * walker.square_displacement_times_acceptance / walker.square_displacement
 
@@ -143,13 +143,11 @@ function grads_warp(fwalker, model, eref, ψt′, τ)
     xwarpprev, _ = node_warp(xprev, ψprev, ∇ψprev, ψ′prev, ∇ψ′prev, τ)
 
     el = last(fwalker.data["Local energy"])
-    el′ = model.hamiltonian_recompute(ψt′, xwarp) / ψt′.value(xwarp)
+    el′ = hamiltonian_recompute′(ψt′, xwarp) / ψt′.value(xwarp)
 
     #el_prev = model.hamiltonian(walker.ψstatus_old, xprev) / walker.ψstatus_old.value
     el_prev = model.hamiltonian_recompute(model.wave_function, xprev) / model.wave_function.value(xprev)
-    el_prev′ = model.hamiltonian_recompute(ψt′, xwarpprev) / ψt′.value(xwarpprev)
-
-    #τₑ = τ * walker.square_displacement_times_acceptance / walker.square_displacement
+    el_prev′ = hamiltonian_recompute′(ψt′, xwarpprev) / ψt′.value(xwarpprev)
 
     ratio = QuantumMonteCarlo.cutoff_velocity(∇ψ / ψ, τ)
     ratio_prev = QuantumMonteCarlo.cutoff_velocity(∇ψprev / ψprev, τ)
@@ -159,11 +157,10 @@ function grads_warp(fwalker, model, eref, ψt′, τ)
     
     ratio = QuantumMonteCarlo.cutoff_velocity(∇ψ′ / ψ′, τ)
     ratio_prev = QuantumMonteCarlo.cutoff_velocity(∇ψ′prev / ψ′prev, τ)
-    sprev′ = (eref - el_prev′)# * ratio_prev
-    s′ = (eref - el′)# * ratio
+    sprev′ = (eref - el_prev′)
+    s′ = (eref - el′)
     b′ = 0.5τ * (sprev′ + s′)
 
-    #println("$el_prev′     $(xwarpprev)")
     return (b′ - b) / da
 end
 
@@ -229,14 +226,7 @@ function gradt_warp(fwalker, model, eref, ψt′, τ)
     u = x - xprev - v*τ
     u′ = xwarp - xwarpprev - vsec_warp*τ
 
-    #∇ₐv = (vsec_warp - v) / da
     ∇ₐnormvsq = (norm(vsec_warp)^2 - norm(v)^2)/da
-
-    #t = -1/(2.0τ) * norm(u)^2
-    #t′ = -1/(2.0τ) * norm(u′)^2
-
-    #return (t′ - t) / da
-    #return dot(u, ∇ₐv)
 
     return -1/2τ * ((norm(dxwarp)^2 - norm(dx)^2) / da + τ^2 * ∇ₐnormvsq - 2τ * (dot(dxwarp, vsec_warp) - dot(dx, v))/da)
 
