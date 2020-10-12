@@ -2,29 +2,40 @@ using Random
 using LinearAlgebra
 
 
-function diffuse_walker!(walker, ψ, τ, eref, model, rng::AbstractRNG)
+function diffuse_walker!(walker, ψ, τ, eref, sigma, model, rng::AbstractRNG)
+
+    x = walker.configuration
 
     ψval = walker.ψstatus.value
     ∇ψ = walker.ψstatus.gradient
-    ∇²ψ = walker.ψstatus_old.laplacian
+    #∇²ψ = walker.ψstatus_old.laplacian
+    ∇²ψ = ψ.laplacian(x)
     v = cutoff_velocity(∇ψ/ψval, τ)
 
-    x = walker.configuration
-    el = model.hamiltonian(walker.ψstatus, x) / ψval
+    gauss = √τ * randn(rng, Float64, size(x))
+    drift = v*τ
 
-    x′ = x .+ v*τ .+ sqrt(τ)*randn(rng, Float64, size(x))
+    #x′ = x .+ v*τ .+ sqrt(τ)*randn(rng, Float64, size(x))
+    x′ = x + drift + gauss
 
     ψval′ = ψ.value(x′)
     ∇ψ′ = ψ.gradient(x′)
     ∇²ψ′ = ψ.laplacian(x′)
     v′ = cutoff_velocity(∇ψ′ / ψval′, τ)
+    new_drift = v′*τ
 
-    el′ = model.hamiltonian_recompute(ψ, x′) / ψval′
+    #el′ = model.hamiltonian_recompute(ψ, x′) / ψval′
     
-    num = exp.(-norm(x .- x′ .- v′*τ)^2/(2.0τ))
-    denom = exp.(-norm(x′ .- x .- v*τ)^2/(2.0τ))
+    forward = norm(gauss)^2
+    backward = norm(gauss + drift + new_drift)^2
+
+    t_prob = exp(1/2τ * (forward - backward))
+
+#    num = exp.(-norm(x .- x′ .- v′*τ)^2 / 2τ)
+#    denom = exp.(-norm(x′ .- x .- v*τ)^2 / 2τ)
     
-    acceptance = min(1.0, ψval′^2 / ψval^2 * num / denom)
+    #acceptance = min(1.0, ψval′^2 / ψval^2 * num / denom)
+    acceptance = min(1.0, ψval′^2 / ψval^2 * t_prob)
 
     if ψval′ == 0.0 || sign(ψval′) != sign(ψval)
         acceptance = 0.0
@@ -47,31 +58,26 @@ function diffuse_walker!(walker, ψ, τ, eref, model, rng::AbstractRNG)
     walker.square_displacement += norm(dx)^2
     walker.square_displacement_times_acceptance += acceptance*norm(dx)^2
 
-    # compute effective time step
-    if walker.square_displacement > 0.0
-        τₑ = τ * walker.square_displacement_times_acceptance / walker.square_displacement
-    else
-        τₑ = τ
-    end
+    el = model.hamiltonian(walker.ψstatus_old, x) / walker.ψstatus_old.value
+    el′ = model.hamiltonian(walker.ψstatus, x) / walker.ψstatus.value
 
-    # umrigar's branching factor cutoff
-    v = walker.ψstatus.gradient / walker.ψstatus.value
-    vold = walker.ψstatus_old.gradient / walker.ψstatus_old.value
-    ratio = norm(cutoff_velocity(v, τₑ)) / norm(v)
-    ratio_old = norm(cutoff_velocity(vold, τₑ)) / norm(vold)
+    s = eref - el
+    s′ = eref - el′
 
-    s = (eref - el) #* ratio_old
-    s′ = (eref - el′) #* ratio
+    exponent = 0.5τ * (s + s′)
+    #println(exponent)
 
-    # update walker weight
-    p = acceptance
-    q = 1 - p
-    if p != 0.0
-        walker.weight *= exp((0.5 * p * (s + s′) + q*s) * τₑ)
-    else
-        walker.weight *= exp(q*s*τₑ)
-    end
-    #println(walker.weight)
-    #walker.weight *= exp(0.5 * (s + s′) * τₑ)
+    #println("Cache:     $el    $(walker.ψstatus_old.laplacian)    $(walker.ψstatus_old.value)")
+    #println("Recompute: $el    $(ψ.laplacian(x))    $(ψ.value(x))")
+    #println("$eref    $s    $s′    $el    $el′")
 
+    mult = exp(0.5τ * (s + s′))
+    walker.weight *= mult
+
+end
+
+
+function damp_timestep(el′, el, eref, sigma; stop=6, start=3)
+    fbet = max(eref - el, eref - el′)
+    clamp(1 - (fbet - start*sigma) / ((stop - start) * sigma), 0, 1)
 end

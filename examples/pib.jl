@@ -9,14 +9,14 @@ using QuantumMonteCarlo
 
 # Force computation settings and import
 const a = 0.5
-const da = 1e-3
+const da = 1e-5
 
 include("forceutil.jl")
 
 # DMC settings
 τ = 1e-2
 nwalkers = 25
-num_blocks = 1000
+num_blocks = 100
 steps_per_block = trunc(Int64, 1/τ)
 neq = 10
 lag = trunc(Int64, steps_per_block)
@@ -29,6 +29,7 @@ function ψpib(x::Array{Float64})
     #max(0, x[1]*(a - x[1]))
     #max(0, (1 + x[1])*sin(π*x[1]/a))
     max(0, a^2 - x[1]^2)
+    #max(0, cos(π*x[1]/2a))
 end
 
 function ψpib′(x::Array{Float64})
@@ -49,6 +50,8 @@ end
     #x -> 4*(a .- 2x) + π/a*cos.(pi*x/a),
     #x -> -8.0 - (π/a)^2*sin(pi*x[1]/a)
     #x -> QuantumMonteCarlo.gradient_fd(ψpib, x),
+    #x -> π/2a * sin.(π*x/2a),
+    #x -> -(π/2a)^2 * cos(π*x[1]/2a)
     #x -> QuantumMonteCarlo.laplacian_fd(ψpib, x)
     x -> -2x,
     x -> -2
@@ -111,7 +114,7 @@ observables = OrderedDict(
 rng = MersenneTwister(160224267)
 
 # create "Fat" walkers
-walkers = QuantumMonteCarlo.generate_walkers(nwalkers, ψtrial, rng, Uniform(-a, a), 1)
+walkers = QuantumMonteCarlo.generate_walkers(nwalkers, ψtrial, rng, Uniform(-a/2, a/2), 1)
 
 
 fat_walkers = [QuantumMonteCarlo.FatWalker(
@@ -161,5 +164,9 @@ energies, errors = QuantumMonteCarlo.run_dmc!(
     rng=rng, 
     neq=neq, 
     outfile="test.hdf5", #ARGS[1],
-    verbosity=:loud
+    brancher=stochastic_reconfiguration!,
+    #brancher=optimal_stochastic_reconfiguration!,
+    verbosity=:loud,
+    branchtime=steps_per_block ÷ 10,
+    #branchtime=1,
 );

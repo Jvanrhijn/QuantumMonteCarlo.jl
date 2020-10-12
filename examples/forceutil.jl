@@ -149,19 +149,19 @@ function grads_warp(fwalker, model, eref, ψt′, τ)
     el_prev = model.hamiltonian_recompute(model.wave_function, xprev) / model.wave_function.value(xprev)
     el_prev′ = model.hamiltonian_recompute(ψt′, xwarpprev) / ψt′.value(xwarpprev)
 
-    τₑ = τ * walker.square_displacement_times_acceptance / walker.square_displacement
+    #τₑ = τ * walker.square_displacement_times_acceptance / walker.square_displacement
 
-    ratio = QuantumMonteCarlo.cutoff_velocity(∇ψ / ψ, τₑ)
-    ratio_prev = QuantumMonteCarlo.cutoff_velocity(∇ψprev / ψprev, τₑ)
+    ratio = QuantumMonteCarlo.cutoff_velocity(∇ψ / ψ, τ)
+    ratio_prev = QuantumMonteCarlo.cutoff_velocity(∇ψprev / ψprev, τ)
     sprev = (eref - el_prev)# * ratio_prev
     s = (eref - el)# * ratio
-    b = 0.5τₑ * (s + sprev)
+    b = 0.5τ * (s + sprev)
     
-    ratio = QuantumMonteCarlo.cutoff_velocity(∇ψ′ / ψ′, τₑ)
-    ratio_prev = QuantumMonteCarlo.cutoff_velocity(∇ψ′prev / ψ′prev, τₑ)
+    ratio = QuantumMonteCarlo.cutoff_velocity(∇ψ′ / ψ′, τ)
+    ratio_prev = QuantumMonteCarlo.cutoff_velocity(∇ψ′prev / ψ′prev, τ)
     sprev′ = (eref - el_prev′)# * ratio_prev
     s′ = (eref - el′)# * ratio
-    b′ = 0.5τₑ * (sprev′ + s′)
+    b′ = 0.5τ * (sprev′ + s′)
 
     #println("$el_prev′     $(xwarpprev)")
     return (b′ - b) / da
@@ -184,15 +184,10 @@ function gradt(fwalker, model, eref, ψ′, τ)
     vsec = ∇ψsec / ψsec
 
     u = x′ - x - v*τ
-    u′ = x′ - x - vsec*τ
 
     ∇ₐv = (vsec - v) / da
-    ∇ₐnormvsq = (norm(vsec)^2 - norm(v)^2) / da
 
-    t = -1/(2.0τ) * norm(u)^2
-    t′ = -1/(2.0τ) * norm(u′)^2
-
-    return (t′ - t) / da
+    return dot(u, ∇ₐv)
 
 end
 
@@ -223,6 +218,9 @@ function gradt_warp(fwalker, model, eref, ψt′, τ)
     xwarp , _ = node_warp(x, ψ, ∇ψ, ψ′, ∇ψ′, τ)
     xwarpprev, _ = node_warp(xprev, ψprev, ∇ψprev, ψ′prev, ∇ψ′prev, τ)
 
+    dx = x - xprev
+    dxwarp = xwarp - xwarpprev
+
     # compute warped drift
     ∇ψ′_old_warp = ψt′.gradient(xwarpprev)
     ψ′_old_warp = ψt′.value(xwarpprev)
@@ -231,13 +229,16 @@ function gradt_warp(fwalker, model, eref, ψt′, τ)
     u = x - xprev - v*τ
     u′ = xwarp - xwarpprev - vsec_warp*τ
 
-    ∇ₐv = (vsec_warp - v) / da
+    #∇ₐv = (vsec_warp - v) / da
     ∇ₐnormvsq = (norm(vsec_warp)^2 - norm(v)^2)/da
 
-    t = -1/(2.0τ) * norm(u)^2
-    t′ = -1/(2.0τ) * norm(u′)^2
+    #t = -1/(2.0τ) * norm(u)^2
+    #t′ = -1/(2.0τ) * norm(u′)^2
 
-    return (t′ - t) / da
+    #return (t′ - t) / da
+    #return dot(u, ∇ₐv)
+
+    return -1/2τ * ((norm(dxwarp)^2 - norm(dx)^2) / da + τ^2 * ∇ₐnormvsq - 2τ * (dot(dxwarp, vsec_warp) - dot(dx, v))/da)
 
 end
 

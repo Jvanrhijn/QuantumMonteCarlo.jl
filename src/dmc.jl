@@ -7,7 +7,7 @@ using Formatting
 using Dates
 
 
-function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng=MersenneTwister(0), neq=0, outfile=Nothing, verbosity=:silent, brancher=stochastic_reconfiguration!)
+function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng=MersenneTwister(0), neq=0, outfile=Nothing, verbosity=:silent, brancher=stochastic_reconfiguration!, branchtime=10)
     nwalkers = length(fat_walkers)
     trial_energy = eref
 
@@ -45,8 +45,10 @@ function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng
                 walker = fwalker.walker
                 el = model.hamiltonian(walker.ψstatus, walker.configuration) / walker.ψstatus.value
 
+
                 # perform drift-diffuse step
-                diffuse_walker!(walker, model.wave_function, τ, eref, model, rng)
+                sigma = j > neq ? sqrt(variance_estimate[j-neq] * nwalkers) : 0.0
+                diffuse_walker!(walker, model.wave_function, τ, eref, sigma, model, rng)
 
                 el′ = model.hamiltonian(walker.ψstatus, walker.configuration) / walker.ψstatus.value
 
@@ -59,6 +61,8 @@ function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng
                 if j > neq
                     accumulate_observables!(fwalker, model, eref)
                 end
+
+
             end
 
             if j > neq
@@ -72,6 +76,12 @@ function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng
 
             if j <= neq
                 eref = 0.5 * (eref + ensemble_energy)
+                #eref = eref - log(block_weight[b])/τ
+            end
+
+            if b % branchtime == 0
+                # perform branching
+                brancher(fat_walkers, rng)
             end
 
         end
@@ -87,9 +97,6 @@ function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng
         block_energy = mean(block_energy, Weights(block_weight))
         block_weight = mean(block_weight)
 
-        # perform branching
-        brancher(fat_walkers, rng)
-
         # only update energy esimate after block has run
         if j > neq
             n = j - neq
@@ -98,19 +105,10 @@ function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng
             total_weight += block_weight
             energy_estimate[n+1] = energy_estimate[n] + block_weight / total_weight * (block_energy - energy_estimate[n])
             variance_estimate[n+1] = (s + block_weight * (block_energy - energy_estimate[n])*(block_energy - energy_estimate[n+1])) / total_weight
-            
-            #energy_estimate[n+1] = (total_weight*energy_estimate[n] + block_weight*block_energy) /
-            #    (total_weight + block_weight)
-
-            #variance_estimate[n+1] = variance_estimate[n] + 
-            #    (block_weight*(block_energy - energy_estimate[n])*(block_energy - energy_estimate[n+1]) -
-            #    variance_estimate[n]) /
-            #    (total_weight + block_weight)
-
+       
             error_estimate[n+1] = sqrt(variance_estimate[n+1] / n)                
 
-            #total_weight += block_weight
-
+            #eref = energy_estimate[n+1] - log(block_weight)
             eref = 0.5 * (eref + energy_estimate[n+1])
 
         end

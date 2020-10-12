@@ -6,10 +6,45 @@ function stochastic_reconfiguration!(walkers, rng::AbstractRNG)
     new_walkers = [deepcopy(w) for w in new_walkers]
     
     for walker in new_walkers
-        walker.walker.weight = 1#global_weight
+        #walker.walker.weight = global_weight
+        walker.walker.weight = 1.0
     end
     
     walkers .= new_walkers
+end
+
+function optimal_stochastic_reconfiguration!(walkers, rng::AbstractRNG)
+    weights = map(w -> w.walker.weight, walkers)
+    global_weight = mean(weights)
+
+    positive_walkers = filter(w -> w.walker.weight / global_weight  >= 1, walkers)
+    negative_walkers = filter(w -> w.walker.weight / global_weight < 1, walkers)
+    npos = length(positive_walkers)
+    nneg = length(negative_walkers)
+
+    # compute number of reconfigurations to perform
+    positive_weights = map(w -> w.walker.weight, positive_walkers)
+    negative_weights = map(w -> w.walker.weight, negative_walkers)
+
+    nreconf = trunc(Int64, sum(abs.(positive_weights ./ global_weight .- 1)) + rand(rng))
+
+    nreconf = min(npos, nneg, nreconf)
+
+    # destroy nreconf negative walkers
+    to_destroy = sample(rng, collect(1:nneg), nreconf; replace=false)
+    deleteat!(negative_walkers, sort(to_destroy))
+
+    # duplicate nreconf positive walkers
+    to_duplicate = sample(rng, collect(1:npos), nreconf; replace=false)
+    duplicates = [deepcopy(w) for w in positive_walkers[to_duplicate]]
+    append!(positive_walkers, duplicates)
+
+    walkers .= vcat(positive_walkers, negative_walkers)
+
+    for w in walkers
+        w.walker.weight = global_weight
+    end
+
 end
 
 function simple_branching!(walkers, rng::AbstractRNG)
@@ -37,7 +72,4 @@ function simple_branching!(walkers, rng::AbstractRNG)
 end
 
 function no_brancher!(walkers, rng::AbstractRNG)
-    for walker in walkers
-        walker.walker.weight = 1.0
-    end
 end
