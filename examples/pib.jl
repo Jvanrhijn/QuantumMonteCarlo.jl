@@ -11,10 +11,16 @@ using QuantumMonteCarlo
 const a = 2
 const da = 1e-2
 
+# Setting up the hamiltonian
+hamiltonian(ψstatus, x) = -0.5*ψstatus.laplacian
+hamiltonian_recompute(ψ, x) = -0.5*ψ.laplacian(x)
+hamiltonian′(ψstatus, x) = -0.5*ψstatus.laplacian
+hamiltonian_recompute′(ψ, x) = -0.5*ψ.laplacian(x)
+
 include("forceutil.jl")
 
 # DMC settings
-τ = 1e-1
+τ = 1e-2
 nwalkers = 100
 num_blocks = 1000
 steps_per_block = trunc(Int64, 1/τ)
@@ -70,10 +76,6 @@ end
     x -> -2x,
     x -> -2
 )
-
-# Setting up the hamiltonian
-hamiltonian(ψstatus, x) = -0.5*ψstatus.laplacian
-hamiltonian_recompute(ψ, x) = -0.5*ψ.laplacian(x)
 
 model = Model(
     hamiltonian,

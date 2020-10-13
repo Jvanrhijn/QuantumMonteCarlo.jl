@@ -35,7 +35,8 @@ function diffuse_walker!(walker, ψ, τ, eref, sigma, model, rng::AbstractRNG)
 #    denom = exp.(-norm(x′ .- x .- v*τ)^2 / 2τ)
     
     #acceptance = min(1.0, ψval′^2 / ψval^2 * num / denom)
-    acceptance = min(1.0, ψval′^2 / ψval^2 * t_prob)
+    #acceptance = min(1.0, ψval′^2 / ψval^2 * t_prob)
+    acceptance = 1.0
 
     if ψval′ == 0.0 || sign(ψval′) != sign(ψval)
         acceptance = 0.0

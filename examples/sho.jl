@@ -9,7 +9,7 @@ using QuantumMonteCarlo
 
 # Force computation settings and import
 a = 1
-da = 1e-2
+da = 1e-5
 
 
 # Setting up the hamiltonianj
@@ -22,7 +22,7 @@ include("forceutil.jl")
 
 # DMC settings
 τ = 1e-3
-nwalkers = 100
+nwalkers = 10
 num_blocks = 100
 steps_per_block = trunc(Int64, 1/τ)
 neq = 10
