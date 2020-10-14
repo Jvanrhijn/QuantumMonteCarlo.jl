@@ -22,8 +22,8 @@ include("forceutil.jl")
 
 # DMC settings
 τ = 1e-2
-nwalkers = 1000
-num_blocks = 1600
+nwalkers = 50
+num_blocks = 1000
 steps_per_block = trunc(Int64, 1/τ)
 neq = 10
 lag = trunc(Int64, 10*steps_per_block)
@@ -127,7 +127,7 @@ fat_walkers = [QuantumMonteCarlo.FatWalker(
     ) for walker in walkers
 ]
 
-fat_walkers = [QuantumMonteCarlo.FatWalker(walker) for walker in walkers]
+#fat_walkers = [QuantumMonteCarlo.FatWalker(walker) for walker in walkers]
 
 ### Actually run DMC
 energies, errors = QuantumMonteCarlo.run_dmc!(
@@ -140,7 +140,7 @@ energies, errors = QuantumMonteCarlo.run_dmc!(
     rng=rng, 
     neq=neq, 
     #brancher=optimal_stochastic_reconfiguration!,
-    #outfile="sho.hdf5", #ARGS[1],
+    outfile="sho.hdf5", #ARGS[1],
     verbosity=:loud,
     branchtime=steps_per_block ÷ 10,
     #branchtime=1,

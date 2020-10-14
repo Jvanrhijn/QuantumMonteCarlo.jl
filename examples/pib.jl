@@ -20,8 +20,8 @@ hamiltonian_recompute′(ψ, x) = -0.5*ψ.laplacian(x)
 include("forceutil.jl")
 
 # DMC settings
-τ = 1e-3
-nwalkers = 10
+τ = 6e-3
+nwalkers = 100
 num_blocks = 4000
 steps_per_block = trunc(Int64, 1/τ)
 neq = 10
@@ -113,7 +113,8 @@ observables = OrderedDict(
     "grad log psi squared old" => grad_logpsisquared_old,
 )
 
-rng = MersenneTwister(160224267)
+#rng = MersenneTwister(160224267)
+rng = MersenneTwister(9045943585439)
 
 # create "Fat" walkers
 walkers = QuantumMonteCarlo.generate_walkers(nwalkers, ψtrial, rng, Uniform(-a/2, a/2), 1)
