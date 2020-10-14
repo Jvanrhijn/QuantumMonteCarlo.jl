@@ -8,8 +8,8 @@ using StatsBase
 using QuantumMonteCarlo
 
 # Force computation settings and import
-const a = 2
-const da = 1e-2
+const a = 1
+const da = 1e-5
 
 # Setting up the hamiltonian
 hamiltonian(ψstatus, x) = -0.5*ψstatus.laplacian
@@ -20,9 +20,9 @@ hamiltonian_recompute′(ψ, x) = -0.5*ψ.laplacian(x)
 include("forceutil.jl")
 
 # DMC settings
-τ = 1e-2
-nwalkers = 100
-num_blocks = 1000
+τ = 1e-3
+nwalkers = 10
+num_blocks = 4000
 steps_per_block = trunc(Int64, 1/τ)
 neq = 10
 lag = trunc(Int64, steps_per_block)
@@ -153,7 +153,7 @@ fat_walkers = [QuantumMonteCarlo.FatWalker(
     ) for walker in walkers
 ]
 
-#fat_walkers = [QuantumMonteCarlo.FatWalker(walker) for walker in walkers]
+fat_walkers = [QuantumMonteCarlo.FatWalker(walker) for walker in walkers]
 
 ### Actually run DMC
 energies, errors = QuantumMonteCarlo.run_dmc!(

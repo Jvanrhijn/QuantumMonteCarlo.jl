@@ -68,27 +68,46 @@ def compute_forces(fpath):
 
     # Get Green's function derivatives
     sderiv_sum = data["grad s"][()][1:]        
+    sderiv_sum_warp = data["grad s (warp)"][()][1:]        
     tderiv_sum = data["grad t"][()][1:]
+    tderiv_sum_warp = data["grad t (warp)"][()][1:]
 
-    # Get products of Local energy and Green's function derivatives
+    ## Get products of Local energy and Green's function derivatives
     el_times_sderiv_sum = data["Local energy * grad s"][()][1:] 
+    el_times_sderiv_sum_warp = data["Local energy * grad s (warp)"][()][1:] 
 
     el_times_tderiv_sum = data["Local energy * grad t"][()][1:]        
+    el_times_tderiv_sum_warp = data["Local energy * grad t (warp)"][()][1:]        
+
+    # Jacobian
+    j = data["grad j"][()][1:]
+    jderiv_contrib = np.average(j, weights=weights)
+    print(jderiv_contrib)
 
     # Get local e derivative
     local_e_deriv = data["grad el"][()][1:]
+    local_e_deriv_warp = data["grad el (warp)"][()][1:]
 
     # Get psi derivative
     psilogderiv = data["grad log psi"][()][1:]
     el_times_psilogderiv = data["Local energy * grad log psi"][()][1:]
 
+    psilogderiv_warp = data["grad log psi (warp)"][()][1:]
+    el_times_psilogderiv_warp = data["Local energy * grad log psi (warp)"][()][1:]
+
     # Hellmann-Feynman force
     force_hf = -local_e_deriv
+    force_hf_warp = -local_e_deriv_warp
 
-    # Pulay force
+    ## Pulay force
     force_pulay_exact = -(
                 el_times_tderiv_sum - energy*tderiv_sum \
             +   el_times_sderiv_sum - energy*sderiv_sum \
+            )
+
+    force_pulay_exact_warp = -(
+                el_times_tderiv_sum_warp - energy*tderiv_sum_warp \
+            +   el_times_sderiv_sum_warp - energy*sderiv_sum_warp \
             )
 
     force_pulay_vd = -(
@@ -96,45 +115,76 @@ def compute_forces(fpath):
             +    el_times_sderiv_sum - energy*sderiv_sum
             )
 
+    force_pulay_vd_warp = -(
+            2 * (el_times_psilogderiv_warp - energy*psilogderiv_warp) \
+            +    el_times_sderiv_sum_warp - energy*sderiv_sum_warp
+            +    jderiv_contrib
+            )
+
     data.close()
 
     return force_hf.flatten(), \
+           force_hf_warp.flatten(), \
            force_pulay_exact.flatten(), \
+           force_pulay_exact_warp.flatten(), \
            force_pulay_vd.flatten(), \
+           force_pulay_vd_warp.flatten(), \
            weights.flatten()
+    #return force_hf.flatten(), force_pulay_vd.flatten(), weights.flatten()
 
 
-force_hf, \
-        force_pulay_exact, \
-        force_pulay_vd, \
-        weights \
-    = compute_forces(sys.argv[1])
+#force_hf, \
+#        force_pulay_exact, \
+#        force_pulay_vd, \
+#        weights \
+#    = compute_forces(sys.argv[1])
+force_hf, force_hf_warp, force_pulay_exact, force_pulay_exact_warp, force_pulay_vd, force_pulay_vd_warp, weights = compute_forces(sys.argv[1])
 
 fhf = np.average(force_hf, weights=weights)
 fhf_err = error(force_hf, weights=weights)
 
+fhf_warp = np.average(force_hf_warp, weights=weights)
+fhf_warp_err = error(force_hf_warp, weights=weights)
+
 fpulay_exact = np.average(force_pulay_exact, weights=weights)
 fpulay_exact_err = error(force_pulay_exact, weights=weights)
+
+fpulay_exact_warp = np.average(force_pulay_exact_warp, weights=weights)
+fpulay_exact_warp_err = error(force_pulay_exact_warp, weights=weights)
 
 fpulay_vd  = np.average(force_pulay_vd, weights=weights)
 fpulay_vd_err = error(force_pulay_vd, weights=weights)
 
+fpulay_vd_warp  = np.average(force_pulay_vd_warp, weights=weights)
+fpulay_vd_warp_err = error(force_pulay_vd_warp, weights=weights)
+
 ftot_exact = np.average(force_hf + force_pulay_exact, weights=weights)
 ftot_exact_err = error(force_hf + force_pulay_exact, weights=weights)
+
+ftot_exact_warp = np.average(force_hf + force_pulay_exact_warp, weights=weights)
+ftot_exact_warp_err = error(force_hf_warp + force_pulay_exact_warp, weights=weights)
 
 ftot_vd = np.average(force_hf + force_pulay_vd, weights=weights)
 ftot_vd_err = error(force_hf + force_pulay_vd, weights=weights)
 
-print(f"HF force:                        {fhf:.5f} +/- {fhf_err:.5f}")
-print(f"\n")
-print(f"Pulay force (exact):             {fpulay_exact:.5f} +/- {fpulay_exact_err:.5f}")
-print(f"\n")
-print(f"Pulay force (vd):                {fpulay_vd:.5f} +/- {fpulay_vd_err:.5f}")
-print(f"\n")
-print(f"Total force (exact):             {ftot_exact:.5f} +/- {ftot_exact_err:.5f}")
-print(f"Total force (vd):                {ftot_vd:.5f} +/- {ftot_vd_err:.5f}")
+ftot_vd_warp = np.average(force_hf_warp + force_pulay_vd_warp, weights=weights)
+ftot_vd_warp_err = error(force_hf_warp + force_pulay_vd_warp, weights=weights)
 
-npoints = 20
+print(f"HF force:                        {fhf:.5f} +/- {fhf_err:.5f}")
+print(f"HF force (warp):                 {fhf_warp:.5f} +/- {fhf_warp_err:.5f}")
+#print(f"\n")
+print(f"Pulay force (exact):             {fpulay_exact:.5f} +/- {fpulay_exact_err:.5f}")
+print(f"Pulay force (exact), warp:       {fpulay_exact_warp:.5f} +/- {fpulay_exact_warp_err:.5f}")
+#print(f"\n")
+print(f"Pulay force (vd):                {fpulay_vd:.5f} +/- {fpulay_vd_err:.5f}")
+print(f"Pulay force (vd), warp           {fpulay_vd_warp:.5f} +/- {fpulay_vd_warp_err:.5f}")
+#print(f"\n")
+print(f"Total force (exact):             {ftot_exact:.5f} +/- {ftot_exact_err:.5f}")
+print(f"Total force (exact), warp:       {ftot_exact_warp:.5f} +/- {ftot_exact_warp_err:.5f}")
+print(f"Total force (vd):                {ftot_vd:.5f} +/- {ftot_vd_err:.5f}")
+print(f"Total force (vd), warp:          {ftot_vd_warp:.5f} +/- {ftot_vd_warp_err:.5f}")
+
+#npoints = 20
 
 #fig, _ = plot_force_data_trace(force_hf, force_pulay_exact, force_hf_warp, force_pulay_exact_warp)
 #fig.suptitle("Exact force")

@@ -97,6 +97,11 @@ function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng
         block_energy = mean(block_energy, Weights(block_weight))
         block_weight = mean(block_weight)
 
+        # reset weights every block
+        for walker in fat_walkers
+            walker.walker.weight = 1.0
+        end
+
         # only update energy esimate after block has run
         if j > neq
             n = j - neq
