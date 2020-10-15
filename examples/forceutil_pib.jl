@@ -21,6 +21,10 @@ function grads(fwalker, model, eref, ψt′, τ)
     ∇ₐel = -2a/(x[1]^2 - a^2)^2
     ∇ₐel′ = -2a/(x′[1]^2 - a^2)^2
 
+    #if x == x′
+    #    return 0
+    #end
+
     -0.5τ * (∇ₐel + ∇ₐel′)
 
 end
@@ -28,10 +32,11 @@ end
 function grads_warp(fwalker, model, eref, ψt′, τ)
     x = fwalker.walker.configuration_old
     x′ = fwalker.walker.configuration
+
     ∇ₐel = -2a/(x[1]^2 - a^2)^2 + x[1] / (a^2 - x[1]^2)^2 * sign(x[1]) 
     ∇ₐel′ = -2a/(x′[1]^2 - a^2)^2 + x′[1] / (a^2 - x′[1]^2)^2 * sign(x′[1]) 
 
-    -0.5τ * (∇ₐel + ∇ₐel′)
+     -0.5τ * (∇ₐel + ∇ₐel′)
 end
 
 function gradt(fwalker, model, eref, ψ′, τ)

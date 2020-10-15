@@ -80,63 +80,72 @@ function grads(fwalker, model, eref, ψ′, τ)
 
     ψ = walker.ψstatus.value
     ∇ψ = walker.ψstatus.gradient
+    v = ∇ψ / ψ
+
     ψold = walker.ψstatus_old.value
     ∇ψold = walker.ψstatus_old.gradient
+    vold = ∇ψold / ψold
 
     ψsec = last(fwalker.data["ψ′"])
     ∇ψsec = last(fwalker.data["∇ψ′"])
+    vsec = ∇ψsec / ψsec
+
     ψsec_old = last(fwalker.data["ψ′_old"])
     ∇ψsec_old = last(fwalker.data["∇ψ′_old"])
+    vsec_old = ∇ψsec_old / ψsec_old
 
     el_prev = model.hamiltonian_recompute(model.wave_function, xprev) / model.wave_function.value(xprev)
     el_prev′ = hamiltonian_recompute′(ψ′, xprev) / ψ′.value(xprev)
 
-    τₑ = τ * walker.square_displacement_times_acceptance / walker.square_displacement
-
-    v = ∇ψ / ψ
-    vold = ∇ψold / ψold
-    ratio = norm(QuantumMonteCarlo.cutoff_velocity(v, τₑ)) / norm(v)
-    ratio_old = norm(QuantumMonteCarlo.cutoff_velocity(vold, τₑ)) / norm(vold)
-
     s = (eref - el)# * ratio
     sprev = (eref - el_prev)# * ratio_old
-    b = 0.5 * (s + sprev) * τₑ
-
-    vsec = ∇ψsec / ψsec
-    vsec_old = ∇ψsec_old / ψsec_old
-    ratio_sec = norm(QuantumMonteCarlo.cutoff_velocity(vsec, τₑ)) / norm(vsec)
-    ratio_sec_old = norm(QuantumMonteCarlo.cutoff_velocity(vsec_old, τₑ)) / norm(vsec_old)
+    S = exp(0.5 * (s + sprev) * τ)
 
     s′ = (eref - el′)# * ratio_sec
     sprev′ = (eref - el_prev′)# * ratio_sec_old
-    b′ = 0.5 * (s′ + sprev′) * τₑ
-    
-    #∇ₐel_prev = (el_prev′ .- el_prev) / da
+    S′ = exp(0.5 * (s′ + sprev′) * τ)
 
-    #grad = -0.5 * (∇ₐel .+ ∇ₐel_prev) * τ
-    grad = (b′ - b) / da
-    return grad
+    num = exp.(-norm(xprev .- x .- v*τ)^2 / 2τ)
+    denom = exp.(-norm(x .- xprev .- vold*τ)^2 / 2τ)
+
+    numsec = exp.(-norm(xprev .- x .- vsec*τ)^2 / 2τ)
+    denomsec = exp.(-norm(x .- xprev .- vsec_old*τ)^2 / 2τ)
+
+    p = min(1, ψ^2 / ψold^2 * num / denom)
+    psec = min(1, ψsec^2 / ψsec_old^2 * numsec / denomsec)
+
+    arg = p*S + 1 - p
+    argsec = psec*S′ + 1 - psec
+    
+    #return (log(abs(argsec)) - log(abs(arg))) / da
+    if x == xprev
+        (log(abs(argsec)) - log(abs(arg))) / da
+    else
+        (log(abs(S′)) - log(abs(S))) / da
+    end
 end
 
 function grads_warp(fwalker, model, eref, ψt′, τ)
     walker = fwalker.walker
-
-    #∇ₐel_warp = last(fwalker.data["grad el (warp)"])
 
     x = walker.configuration
     xprev = walker.configuration_old
 
     ψ = walker.ψstatus.value
     ∇ψ = walker.ψstatus.gradient
+    v = ∇ψ / ψ
 
     ψ′ = last(fwalker.data["ψ′"])
     ∇ψ′ = last(fwalker.data["∇ψ′"])
+    v′ = ∇ψ′ / ψ′
 
     ψprev = walker.ψstatus_old.value
     ∇ψprev = walker.ψstatus_old.gradient
+    vprev = ∇ψprev / ψprev
 
     ψ′prev = last(fwalker.data["ψ′_old"])
     ∇ψ′prev = last(fwalker.data["∇ψ′_old"])
+    v′prev = ∇ψ′prev / ψ′prev
 
     # perform warp
     xwarp , _ = node_warp(x, ψ, ∇ψ, ψ′, ∇ψ′, τ)
@@ -145,23 +154,35 @@ function grads_warp(fwalker, model, eref, ψt′, τ)
     el = last(fwalker.data["Local energy"])
     el′ = hamiltonian_recompute′(ψt′, xwarp) / ψt′.value(xwarp)
 
-    #el_prev = model.hamiltonian(walker.ψstatus_old, xprev) / walker.ψstatus_old.value
     el_prev = model.hamiltonian_recompute(model.wave_function, xprev) / model.wave_function.value(xprev)
     el_prev′ = hamiltonian_recompute′(ψt′, xwarpprev) / ψt′.value(xwarpprev)
 
-    ratio = QuantumMonteCarlo.cutoff_velocity(∇ψ / ψ, τ)
-    ratio_prev = QuantumMonteCarlo.cutoff_velocity(∇ψprev / ψprev, τ)
     sprev = (eref - el_prev)# * ratio_prev
     s = (eref - el)# * ratio
-    b = 0.5τ * (s + sprev)
+    S = exp(0.5τ * (s + sprev))
     
-    ratio = QuantumMonteCarlo.cutoff_velocity(∇ψ′ / ψ′, τ)
-    ratio_prev = QuantumMonteCarlo.cutoff_velocity(∇ψ′prev / ψ′prev, τ)
     sprev′ = (eref - el_prev′)
     s′ = (eref - el′)
-    b′ = 0.5τ * (sprev′ + s′)
+    S′ = exp(0.5τ * (sprev′ + s′))
 
-    return (b′ - b) / da
+    num = exp.(-norm(xprev .- x .- v*τ)^2 / 2τ)
+    denom = exp.(-norm(x .- xprev .- vprev*τ)^2 / 2τ)
+
+    numsec = exp.(-norm(xprev .- x .- v′*τ)^2 / 2τ)
+    denomsec = exp.(-norm(x .- xprev .- v′prev*τ)^2 / 2τ)
+
+    p = min(1, ψ^2 / ψprev^2 * num / denom)
+    psec = min(1, ψ′^2 / ψ′prev^2 * numsec / denomsec)
+
+    arg = p*S + 1 - p
+    argsec = psec*S′ + 1 - psec
+
+    if x == xprev
+        (log(abs(argsec)) - log(abs(arg))) / da
+    else
+        (log(abs(S′)) - log(abs(S))) / da
+    end
+
 end
 
 function gradt(fwalker, model, eref, ψ′, τ)
@@ -172,19 +193,51 @@ function gradt(fwalker, model, eref, ψ′, τ)
     x′ = fwalker.walker.configuration
     x = fwalker.walker.configuration_old
 
-    if x′ == x
-        return 0
-    end
-
     ∇ψsec = ψ′.gradient(x)
     ψsec = ψ′.value(x)
     vsec = ∇ψsec / ψsec
 
     u = x′ - x - v*τ
+    u′ = x′ - x - vsec*τ
+
+    ψnew = fwalker.walker.ψstatus.value
+    ∇ψnew = fwalker.walker.ψstatus.gradient
+    vnew = ∇ψnew / ψnew
+
+    ψnew_sec = last(fwalker.data["ψ′"])
+    ∇ψnew_sec = last(fwalker.data["∇ψ′"])
+    vnew_sec = ∇ψnew_sec / ψnew_sec
+
+    num = exp.(-norm(x .- x′ .- vnew*τ)^2 / 2τ)
+    denom = exp.(-norm(x′ .- x .- v*τ)^2 / 2τ)
+
+    numsec = exp.(-norm(x .- x′ .- vnew_sec*τ)^2 / 2τ)
+    denomsec = exp.(-norm(x′ .- x .- vsec*τ)^2 / 2τ)
+
+    p = min(1, ψnew^2 / ψ^2 * num / denom)
+    psec = min(1, ψnew_sec^2 / ψsec^2 * numsec / denomsec)
+
+    t′ = exp(-norm(u′)^2 / 2τ)
+    t = exp(-norm(u)^2 / 2τ)
+
+    arg = p*t + 1 - p
+    arg′ = psec*t′ + 1 - psec
+
+    #return (t′ - t) / da
+    #return (log(abs(arg′)) - log(abs(arg))) / da
 
     ∇ₐv = (vsec - v) / da
+    ∇ₐt = (t′ - t) / da
+    ∇ₐp = (psec - p) / da
 
-    return dot(u, ∇ₐv)
+    #p * t / (p*t + 1 - p) * dot(u, ∇ₐv)
+
+    if x == x′
+        (p*∇ₐt + (1 -t) * ∇ₐp) / (p*t + 1 - p)
+    else
+        #dot(u, ∇ₐv)
+        (log(abs(t′)) - log(abs(t))) / da
+    end
 
 end
 
@@ -194,19 +247,16 @@ function gradt_warp(fwalker, model, eref, ψt′, τ)
     x = walker.configuration
     xprev = walker.configuration_old
 
-    if xprev == x
-        return 0
-    end
-
     ψ = walker.ψstatus.value
     ∇ψ = walker.ψstatus.gradient
+    v = ∇ψ / ψ
 
     ψ′ = last(fwalker.data["ψ′"])
     ∇ψ′ = last(fwalker.data["∇ψ′"])
 
     ψprev = walker.ψstatus_old.value
     ∇ψprev = walker.ψstatus_old.gradient
-    v = ∇ψprev / ψprev
+    vprev = ∇ψprev / ψprev
 
     ψ′prev = last(fwalker.data["ψ′_old"])
     ∇ψ′prev = last(fwalker.data["∇ψ′_old"])
@@ -215,20 +265,37 @@ function gradt_warp(fwalker, model, eref, ψt′, τ)
     xwarp , _ = node_warp(x, ψ, ∇ψ, ψ′, ∇ψ′, τ)
     xwarpprev, _ = node_warp(xprev, ψprev, ∇ψprev, ψ′prev, ∇ψ′prev, τ)
 
-    dx = x - xprev
-    dxwarp = xwarp - xwarpprev
-
     # compute warped drift
     ∇ψ′_old_warp = ψt′.gradient(xwarpprev)
     ψ′_old_warp = ψt′.value(xwarpprev)
-    vsec_warp = ∇ψ′_old_warp / ψ′_old_warp
+    vsec_warp_prev = ∇ψ′_old_warp / ψ′_old_warp
+    vsec_warp = ψt′.gradient(xwarp) / ψt′.value(xwarp)
 
-    u = x - xprev - v*τ
-    u′ = xwarp - xwarpprev - vsec_warp*τ
+    u = x - xprev - vprev*τ
+    u′ = xwarp - xwarpprev - vsec_warp_prev*τ
 
-    ∇ₐnormvsq = (norm(vsec_warp)^2 - norm(v)^2)/da
+    num = exp.(-norm(xprev .- x .- v*τ)^2 / 2τ)
+    denom = exp.(-norm(x .- xprev .- vprev*τ)^2 / 2τ)
 
-    return -1/2τ * ((norm(dxwarp)^2 - norm(dx)^2) / da + τ^2 * ∇ₐnormvsq - 2τ * (dot(dxwarp, vsec_warp) - dot(dx, v))/da)
+    numsec = exp.(-norm(xwarpprev .- xwarp .- vsec_warp*τ)^2 / 2τ)
+    denomsec = exp.(-norm(xwarp .- xwarpprev .- vsec_warp_prev*τ)^2 / 2τ)
+
+    p = min(1, ψ^2 / ψprev^2 * num / denom)
+    psec = min(1, ψ′^2 / ψ′prev^2 * numsec / denomsec)
+
+    t′ = exp(-norm(u′)^2 / 2τ)
+    t = exp(-norm(u)^2 / 2τ)
+
+    ∇ₐv = (vsec_warp_prev - vprev) / da
+    ∇ₐt = (t′ - t) / da
+    ∇ₐp = (psec - p) / da
+
+    if x == xprev
+        (p*∇ₐt + (1 - t) * ∇ₐp) / (p*t + 1 - p)
+    else
+        #dot(u, ∇ₐv)
+        (log(abs(t′)) - log(abs(t))) / da
+    end
 
 end
 

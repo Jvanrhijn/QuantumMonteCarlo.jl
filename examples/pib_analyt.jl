@@ -18,14 +18,12 @@ hamiltonian_recompute(ψ, x) = -0.5*ψ.laplacian(x)
 include("forceutil_pib.jl")
 
 # DMC settings
-τ = 1e-3
-nwalkers = 100
-num_blocks = 400
+τ = 2e-2
+nwalkers = 10
+num_blocks = 100
 steps_per_block = trunc(Int64, 1/τ)
 neq = 10
 lag = trunc(Int64, steps_per_block)
-#lag = max(1, trunc(Int64, 10 * 1e-2 / τ))
-lag = 10
 eref = 5.0/(2a)^2
 
 # Trial wave function

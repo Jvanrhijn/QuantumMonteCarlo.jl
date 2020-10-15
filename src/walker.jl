@@ -81,10 +81,10 @@ function accumulate_observables!(fwalker, model, eref)
             fwalker.history_sums[key] = fwalker.history_sums[key] .- first(fwalker.data[key])
         end
 
-        push!(fwalker.data[key], new_val)
-
         # add new value to history sum
         fwalker.history_sums[key] = fwalker.history_sums[key] .+ new_val
+
+        push!(fwalker.data[key], new_val)
 
     end
     push!(fwalker.data["Weight"], fwalker.walker.weight)

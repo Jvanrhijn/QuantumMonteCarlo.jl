@@ -20,12 +20,13 @@ hamiltonian_recompute′(ψ, x) = -0.5*ψ.laplacian(x)
 include("forceutil.jl")
 
 # DMC settings
-τ = 6e-3
-nwalkers = 100
-num_blocks = 4000
+τ = 2e-2
+nwalkers = 10
+num_blocks = 1000
 steps_per_block = trunc(Int64, 1/τ)
 neq = 10
 lag = trunc(Int64, steps_per_block)
+#lag = 1
 eref = 5.0/(2a)^2
 
 # Trial wave function
@@ -154,7 +155,7 @@ fat_walkers = [QuantumMonteCarlo.FatWalker(
     ) for walker in walkers
 ]
 
-fat_walkers = [QuantumMonteCarlo.FatWalker(walker) for walker in walkers]
+#fat_walkers = [QuantumMonteCarlo.FatWalker(walker) for walker in walkers]
 
 ### Actually run DMC
 energies, errors = QuantumMonteCarlo.run_dmc!(

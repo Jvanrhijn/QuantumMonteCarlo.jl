@@ -59,7 +59,7 @@ function diffuse_walker!(walker, ψ, τ, eref, sigma, model, rng::AbstractRNG)
     walker.square_displacement += norm(dx)^2
     walker.square_displacement_times_acceptance += acceptance*norm(dx)^2
 
-    el = model.hamiltonian(walker.ψstatus_old, x) / walker.ψstatus_old.value
+    el = model.hamiltonian(walker.ψstatus_old, walker.configuration_old) / walker.ψstatus_old.value
     el′ = model.hamiltonian(walker.ψstatus, x) / walker.ψstatus.value
 
     s = eref - el
