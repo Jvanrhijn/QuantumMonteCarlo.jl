@@ -86,13 +86,11 @@ function move_walker!(walker, τ, ψ, rng::AbstractRNG)
     ∇²ψ = walker.ψstatus.laplacian
 
     v = cutoff_velocity(∇ψ/ψval, τ)
+    
     x′ = x .+ v*τ .+ sqrt(τ)*randn(rng, Float64, size(x))
 
     walker.configuration_old = deepcopy(x)
     walker.ψstatus_old = deepcopy(walker.ψstatus)
-    #walker.ψstatus_old.value = ψval
-    #walker.ψstatus_old.gradient .= ∇ψ
-    #walker.ψstatus_old.laplacian = ∇²ψ
 
     walker.configuration .= x′
     walker.ψstatus.value = ψ.value(x′)
@@ -100,14 +98,13 @@ function move_walker!(walker, τ, ψ, rng::AbstractRNG)
     walker.ψstatus.laplacian = ψ.laplacian(x′)
 end
 
-function accept_move!(walker, τ, rng::AbstractRNG)
+function compute_acceptance!(walker, τ)
     x = walker.configuration_old
     x′ = walker.configuration
     ψ = walker.ψstatus_old.value
     ψ′ = walker.ψstatus.value
     ∇ψ = walker.ψstatus_old.gradient
     ∇ψ′ = walker.ψstatus.gradient
-
     
     ratio = ψ′^2 / ψ^2
 
@@ -122,16 +119,13 @@ function accept_move!(walker, τ, rng::AbstractRNG)
         p = 0.0
     end
 
-    # reject move if acceptance too small
-    if p <= rand(rng)
-        walker.configuration .= x
-        walker.ψstatus = deepcopy(walker.ψstatus_old)
-    end
-
     return p
 end
 
-function damp_timestep(el′, el, eref, sigma; stop=6, start=3)
-    fbet = max(eref - el, eref - el′)
-    clamp(1 - (fbet - start*sigma) / ((stop - start) * sigma), 0, 1)
+function accept_move!(walker, p, rng::AbstractRNG)
+    # reject move if acceptance too small
+    if p <= rand(rng)
+        walker.configuration .= walker.configuration_old
+        walker.ψstatus = deepcopy(walker.ψstatus_old)
+    end
 end

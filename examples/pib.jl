@@ -20,59 +20,32 @@ hamiltonian_recompute′(ψ, x) = -0.5*ψ.laplacian(x)
 include("forceutil.jl")
 
 # DMC settings
-τ = 1e-3
+τ = 1e-2
 nwalkers = 10
 num_blocks = 100
 steps_per_block = trunc(Int64, 1/τ)
-neq = 1
+neq = 10
 lag = trunc(Int64, steps_per_block)
 eref = 5.0/(2a)^2
 
 # Trial wave function
 function ψpib(x::Array{Float64})
-    #max(0, sin(pi*x[1])/a)
-    #max(0, 4*x[1].*(a .- x[1]) + sin(pi*x[1]/a))
-    #max(0, x[1]*(a - x[1]))
-    #max(0, (1 + x[1])*sin(π*x[1]/a))
     max(0, a^2 - x[1]^2)
-    #max(0, cos(π*x[1]/2a))
 end
 
 function ψpib′(x::Array{Float64})
-    #max(0, sin(pi*x[1]/(a+da)))
-    #max(0, 4*x[1].*(a + da .- x[1]) + sin(pi*x[1]/(a+da)))
-    #max(0, (x[1] + da/2)*(a + da/2 - x[1]))
-    #max(0, (1 + x[1])*sin(π*x[1]/(a + da)))
     a′ = a + da
     max(0, (a′)^2 - x[1]^2)
 end
 
 ψtrial = WaveFunction(
     ψpib,
-    #x -> π/a*cos.(π*x/a).*(1 .+ x) + sin.(π*x/a),
-    #x -> -π*(π*(x[1] + 1)*sin(π*x[1]/a) - 2a*cos(π*x[1]/a))/a^2
-    #x -> pi*cos.(pi*x/a)/a,
-    #x -> -(pi/a)^2*sin(pi*x[1]/a)
-    #x -> 4*(a .- 2x) + π/a*cos.(pi*x/a),
-    #x -> -8.0 - (π/a)^2*sin(pi*x[1]/a)
-    #x -> QuantumMonteCarlo.gradient_fd(ψpib, x),
-    #x -> π/2a * sin.(π*x/2a),
-    #x -> -(π/2a)^2 * cos(π*x[1]/2a)
-    #x -> QuantumMonteCarlo.laplacian_fd(ψpib, x)
     x -> -2x,
     x -> -2
 )
 
 ψtrial′ = WaveFunction(
     ψpib′,
-    #x -> π/(a+da)*cos.(π*x/(a+da)).*(1 .+ x) + sin.(π*x/(a+da)),
-    #x -> -π*(π*(x[1] + 1)*sin(π*x[1]/(a+da)) - 2a*cos(π*x[1]/(a+da)))/(a+da)^2
-    #x -> pi*cos.(pi*x/(a + da))/(a + da),
-    #x -> -(pi/(a + da))^2*sin(pi*x[1]/(a + da))
-    #x -> 4*(a + da .- 2x) + π/(a + da)*cos.(pi*x/(a + da)),
-    #x -> -8.0 - (π/(a+da))^2*sin(pi*x[1]/(a + da))
-    #x -> QuantumMonteCarlo.gradient_fd(ψpib′, x),
-    #x -> QuantumMonteCarlo.laplacian_fd(ψpib′, x),
     x -> -2x,
     x -> -2
 )
@@ -87,29 +60,29 @@ model = Model(
 # TODO: fix the time spent in iterating over dicts
 # Observables needed for force computation
 observables = OrderedDict(
-    "ψ′" => (fwalker, model, eref) -> psi_sec(fwalker, model, eref, ψtrial′),
-    "∇ψ′" => (fwalker, model, eref) -> gradpsi_sec(fwalker, model, eref, ψtrial′),
-    "ψ′_old" => (fwalker, model, eref) -> psi_sec_old(fwalker, model, eref, ψtrial′),
-    "∇ψ′_old" => (fwalker, model, eref) -> gradpsi_sec_old(fwalker, model, eref, ψtrial′),
+    "ψ′" => (fwalker, model, eref, x) -> psi_sec(fwalker, model, eref, x, ψtrial′),
+    "∇ψ′" => (fwalker, model, eref, x) -> gradpsi_sec(fwalker, model, eref, x, ψtrial′),
+    "ψ′_old" => (fwalker, model, eref, x) -> psi_sec_old(fwalker, model, eref, x, ψtrial′),
+    "∇ψ′_old" => (fwalker, model, eref, x) -> gradpsi_sec_old(fwalker, model, eref, x, ψtrial′),
     "Local energy" => local_energy,
-    "Local energy (secondary)" => (fwalker, model, eref) -> local_energy_sec(fwalker, model, eref, ψtrial′),
-    "grad el" => (fwalker, model, eref) -> gradel(fwalker, model, eref, ψtrial′),
-    "grad el (warp)" => (fwalker, model, eref) -> gradel_warp(fwalker, model, eref, ψtrial′, τ),
-    "grad log psi" => (fwalker, model, eref) -> grad_logpsi(fwalker, model, eref, ψtrial′),
-    "grad log psi (warp)" => (fwalker, model, eref) -> grad_logpsi_warp(fwalker, model, eref, ψtrial′, τ),
-    "grad s" => (fwalker, model, eref) -> grads(fwalker, model, eref, ψtrial′, τ),
-    "grad t" => (fwalker, model, eref) -> gradt(fwalker, model, eref, ψtrial′, τ),
-    "grad s (warp)" => (fwalker, model, eref) -> grads_warp(fwalker, model, eref, ψtrial′, τ),
-    "grad t (warp)" => (fwalker, model, eref) -> gradt_warp(fwalker, model, eref, ψtrial′, τ),
+    "Local energy (secondary)" => (fwalker, model, eref, x) -> local_energy_sec(fwalker, model, eref, x, ψtrial′),
+    "grad el" => (fwalker, model, eref, x) -> gradel(fwalker, model, eref, x, ψtrial′),
+    "grad el (warp)" => (fwalker, model, eref, x) -> gradel_warp(fwalker, model, eref, x, ψtrial′, τ),
+    "grad log psi" => (fwalker, model, eref, x) -> grad_logpsi(fwalker, model, eref, x, ψtrial′),
+    "grad log psi (warp)" => (fwalker, model, eref, x) -> grad_logpsi_warp(fwalker, model, eref, x, ψtrial′, τ),
+    "grad s" => (fwalker, model, eref, x) -> grads(fwalker, model, eref, x, ψtrial′, τ),
+    "grad t" => (fwalker, model, eref, x) -> gradt(fwalker, model, eref, x, ψtrial′, τ),
+    "grad s (warp)" => (fwalker, model, eref, x) -> grads_warp(fwalker, model, eref, x, ψtrial′, τ),
+    "grad t (warp)" => (fwalker, model, eref, x) -> gradt_warp(fwalker, model, eref, x, ψtrial′, τ),
     #These are placeholders, need to collect cutoff-ed versions as well
-    "grad s (no cutoff)" => (fwalker, model, eref) -> grads(fwalker, model, eref, ψtrial′, τ),
-    "grad t (no cutoff)" => (fwalker, model, eref) -> gradt(fwalker, model, eref, ψtrial′, τ),
-    "grad s (warp, no cutoff)" => (fwalker, model, eref) -> grads_warp(fwalker, model, eref, ψtrial′, τ),
-    "grad t (warp, no cutoff)" => (fwalker, model, eref) -> gradt_warp(fwalker, model, eref, ψtrial′, τ),
-    "grad log j" => (fwalker, model, eref) -> gradj(fwalker, model, eref, τ),
-    "sum grad log j" => (fwalker, model, eref) -> gradj(fwalker, model, eref, τ),
+    "grad s (no cutoff)" => (fwalker, model, eref, x) -> grads(fwalker, model, eref, x, ψtrial′, τ),
+    "grad t (no cutoff)" => (fwalker, model, eref, x) -> gradt(fwalker, model, eref, x, ψtrial′, τ),
+    "grad s (warp, no cutoff)" => (fwalker, model, eref, x) -> grads_warp(fwalker, model, eref, x, ψtrial′, τ),
+    "grad t (warp, no cutoff)" => (fwalker, model, eref, x) -> gradt_warp(fwalker, model, eref, x, ψtrial′, τ),
+    "grad log j" => (fwalker, model, eref, x) -> gradj(fwalker, model, eref, x, τ),
+    "sum grad log j" => (fwalker, model, eref, x) -> gradj(fwalker, model, eref, x, τ),
     "psi history" => psi_history,
-    "psi history (secondary)" => (fwalker, model, eref) -> psi_history′(fwalker, model, eref, ψtrial′),
+    "psi history (secondary)" => (fwalker, model, eref, x) -> psi_history′(fwalker, model, eref, x, ψtrial′),
     "grad log psi squared old" => grad_logpsisquared_old,
 )
 
@@ -154,7 +127,7 @@ fat_walkers = [QuantumMonteCarlo.FatWalker(
     ) for walker in walkers
 ]
 
-fat_walkers = [QuantumMonteCarlo.FatWalker(walker) for walker in walkers]
+#fat_walkers = [QuantumMonteCarlo.FatWalker(walker) for walker in walkers]
 
 ### Actually run DMC
 energies, errors = QuantumMonteCarlo.run_dmc!(
@@ -166,10 +139,8 @@ energies, errors = QuantumMonteCarlo.run_dmc!(
     eref,
     rng=rng, 
     neq=neq, 
-    #outfile="test.hdf5", #ARGS[1],
+    outfile="test.hdf5", #ARGS[1],
     brancher=stochastic_reconfiguration!,
-    #brancher=optimal_stochastic_reconfiguration!,
     verbosity=:loud,
-    #branchtime=steps_per_block ÷ 10,
-    branchtime=1,
+    branchtime=steps_per_block ÷ 10,
 );

@@ -1,11 +1,11 @@
 # All functions needed for calculating forces
-function local_energy(fwalker, model, eref)
+function local_energy(fwalker, model, eref, x′)
     ψstatus = fwalker.walker.ψstatus
     x = fwalker.walker.configuration
     model.hamiltonian(ψstatus, x) / ψstatus.value
 end
 
-function local_energy_sec(fwalker, model, eref, ψ′)
+function local_energy_sec(fwalker, model, eref, x′, ψ′)
     x = fwalker.walker.configuration
     hamiltonian_recompute′(ψ′, x) / ψ′.value(x)
 end
@@ -30,13 +30,13 @@ function node_warp(x, ψ, ∇ψ, ψ′, ∇ψ′, τ)
     xwarp, jac
 end
 
-function gradel(fwalker, model, eref, ψ′)
+function gradel(fwalker, model, eref, x′, ψ′)
     el = fwalker.data["Local energy"]
     el′ = fwalker.data["Local energy (secondary)"]
     (el′ - el) / da
 end
 
-function gradel_warp(fwalker, model, eref, ψt′, τ)
+function gradel_warp(fwalker, model, eref, x′, ψt′, τ)
     walker = fwalker.walker
     ψ = walker.ψstatus.value
     ∇ψ = walker.ψstatus.gradient
@@ -52,23 +52,23 @@ function gradel_warp(fwalker, model, eref, ψt′, τ)
     (el′ - el) / da
 end
 
-function psi_sec(fwalker, model, eref, ψ′)
+function psi_sec(fwalker, model, eref, x′, ψ′)
     ψ′.value(fwalker.walker.configuration)
 end
 
-function gradpsi_sec(fwalker, model, eref, ψ′)
+function gradpsi_sec(fwalker, model, eref, x′, ψ′)
     ψ′.gradient(fwalker.walker.configuration)
 end
 
-function gradpsi_sec_old(fwalker, model, eref, ψ′)
+function gradpsi_sec_old(fwalker, model, eref, x′, ψ′)
     ψ′.gradient(fwalker.walker.configuration_old)
 end
 
-function psi_sec_old(fwalker, model, eref, ψ′)
+function psi_sec_old(fwalker, model, eref, x′, ψ′)
     ψ′.value(fwalker.walker.configuration_old)
 end
 
-function grads(fwalker, model, eref, ψ′, τ)
+function grads(fwalker, model, eref, x′, ψ′, τ)
     walker = fwalker.walker
     ∇ₐel = last(fwalker.data["grad el"])
     xprev = fwalker.walker.configuration_old
@@ -114,14 +114,16 @@ function grads(fwalker, model, eref, ψ′, τ)
     p = min(1, ψ^2 / ψold^2 * num / denom)
     psec = min(1, ψsec^2 / ψsec_old^2 * numsec / denomsec)
 
-    arg = p*S + 1 - p
-    argsec = psec*S′ + 1 - psec
+    #arg = p*S + 1 - p
+    #argsec = psec*S′ + 1 - psec
+    arg = S
+    argsec = S′
     
     (log(abs(argsec)) - log(abs(arg))) / da
 
 end
 
-function grads_warp(fwalker, model, eref, ψt′, τ)
+function grads_warp(fwalker, model, eref, x′, ψt′, τ)
     walker = fwalker.walker
 
     x = walker.configuration
@@ -170,35 +172,34 @@ function grads_warp(fwalker, model, eref, ψt′, τ)
     p = min(1, ψ^2 / ψprev^2 * num / denom)
     psec = min(1, ψ′^2 / ψ′prev^2 * numsec / denomsec)
 
-    arg = p*S + 1 - p
-    argsec = psec*S′ + 1 - psec
+#    arg = p*S + 1 - p
+#    argsec = psec*S′ + 1 - psec
+    arg = S
+    argsec = S′
 
     (log(abs(argsec)) - log(abs(arg))) / da
 
 end
 
-function gradt(fwalker, model, eref, ψ′, τ)
+function gradt(fwalker, model, eref, x′, ψ′, τ)
 
-    x′ = fwalker.walker.configuration
     x = fwalker.walker.configuration_old
+    x′ = fwalker.walker.configuration
 
-    ∇ψ = fwalker.walker.ψstatus_old.gradient
-    ψ = fwalker.walker.ψstatus_old.value
+    ψ = model.wave_function.value(x)
+    ∇ψ = model.wave_function.gradient(x)
     v = ∇ψ / ψ
 
     ∇ψsec = ψ′.gradient(x)
     ψsec = ψ′.value(x)
     vsec = ∇ψsec / ψsec
 
-    u = x′ - x - v*τ
-    u′ = x′ - x - vsec*τ
-
-    ψnew = fwalker.walker.ψstatus.value
-    ∇ψnew = fwalker.walker.ψstatus.gradient
+    ψnew = model.wave_function.value(x′)
+    ∇ψnew = model.wave_function.gradient(x′)
     vnew = ∇ψnew / ψnew
 
-    ψnew_sec = last(fwalker.data["ψ′"])
-    ∇ψnew_sec = last(fwalker.data["∇ψ′"])
+    ψnew_sec = ψ′.value(x′)
+    ∇ψnew_sec = ψ′.gradient(x′)
     vnew_sec = ∇ψnew_sec / ψnew_sec
 
     num = exp.(-norm(x .- x′ .- vnew*τ)^2 / 2τ)
@@ -210,42 +211,39 @@ function gradt(fwalker, model, eref, ψ′, τ)
     p = min(1, ψnew^2 / ψ^2 * num / denom)
     psec = min(1, ψnew_sec^2 / ψsec^2 * numsec / denomsec)
 
-    t′ = exp(-norm(u′)^2 / 2τ)
+    u = x′ - x - v*τ
+    usec = x′ - x - vsec*τ
+
+    tsec = exp(-norm(usec)^2 / 2τ)
+    tsec_rr = exp(-norm(vsec*τ)^2 / 2τ)
     t = exp(-norm(u)^2 / 2τ)
+    t_rr = exp(-norm(v*τ)^2 / 2τ)
 
-    arg = p*t + 1 - p
-    arg′ = psec*t′ + 1 - psec
-
-    ∇ₐv = (vsec - v) / da
-    ∇ₐt = (t′ - t) / da
-    ∇ₐp = (psec - p) / da
-
-    argsec = psec*t′ + 1 - psec
-    arg = p*t + 1 - p
+    argsec = psec*tsec + (1 - psec)*tsec_rr
+    arg = p*t + (1 - p)*t_rr
 
     (log(abs(argsec)) - log(abs(arg))) / da
   
 end
 
-function gradt_warp(fwalker, model, eref, ψt′, τ)
+function gradt_warp(fwalker, model, eref, x, ψt′, τ)
     walker = fwalker.walker
 
-    x = walker.configuration
     xprev = walker.configuration_old
 
-    ψ = walker.ψstatus.value
-    ∇ψ = walker.ψstatus.gradient
+    ψ = model.wave_function.value(x)
+    ∇ψ = model.wave_function.gradient(x)
     v = ∇ψ / ψ
 
-    ψ′ = last(fwalker.data["ψ′"])
-    ∇ψ′ = last(fwalker.data["∇ψ′"])
+    ψ′ = model.wave_function.value(x)
+    ∇ψ′ = model.wave_function.gradient(x)
 
-    ψprev = walker.ψstatus_old.value
-    ∇ψprev = walker.ψstatus_old.gradient
+    ψprev = model.wave_function.value(xprev)
+    ∇ψprev = model.wave_function.gradient(xprev)
     vprev = ∇ψprev / ψprev
 
-    ψ′prev = last(fwalker.data["ψ′_old"])
-    ∇ψ′prev = last(fwalker.data["∇ψ′_old"])
+    ψ′prev = ψtrial′.value(xprev)
+    ∇ψ′prev = ψtrial′.gradient(xprev)
 
     # perform warp
     xwarp , _ = node_warp(x, ψ, ∇ψ, ψ′, ∇ψ′, τ)
@@ -257,9 +255,6 @@ function gradt_warp(fwalker, model, eref, ψt′, τ)
     vsec_warp_prev = ∇ψ′_old_warp / ψ′_old_warp
     vsec_warp = ψt′.gradient(xwarp) / ψt′.value(xwarp)
 
-    u = x - xprev - vprev*τ
-    u′ = xwarp - xwarpprev - vsec_warp_prev*τ
-
     num = exp.(-norm(xprev .- x .- v*τ)^2 / 2τ)
     denom = exp.(-norm(x .- xprev .- vprev*τ)^2 / 2τ)
 
@@ -269,21 +264,23 @@ function gradt_warp(fwalker, model, eref, ψt′, τ)
     p = min(1, ψ^2 / ψprev^2 * num / denom)
     psec = min(1, ψ′^2 / ψ′prev^2 * numsec / denomsec)
 
+    u = x - xprev - vprev*τ
+    u′ = xwarp - xwarpprev - vsec_warp_prev*τ
+
     t′ = exp(-norm(u′)^2 / 2τ)
+    t′_rr = exp(-norm(vsec_warp_prev*τ)^2 / 2τ)
+
     t = exp(-norm(u)^2 / 2τ)
+    t_rr = exp(-norm(vprev*τ)^2 / 2τ)
 
-    ∇ₐv = (vsec_warp_prev - vprev) / da
-    ∇ₐt = (t′ - t) / da
-    ∇ₐp = (psec - p) / da
-
-    argsec = psec*t′ + 1 - psec
-    arg = p*t + 1 - p
+    argsec = psec*t′ + (1 - psec) * t′_rr
+    arg = p*t + (1 - p) * t_rr
 
     (log(abs(argsec)) - log(abs(arg))) / da
 
 end
 
-function gradj(fwalker, model, eref, τ)
+function gradj(fwalker, model, eref, x′, τ)
     walker = fwalker.walker
 
     x = walker.configuration
@@ -299,13 +296,13 @@ function gradj(fwalker, model, eref, τ)
     return log(abs(jac)) / da
 end
 
-function grad_logpsi(fwalker, model, eref, ψt′)
+function grad_logpsi(fwalker, model, eref, x′, ψt′)
     ψ′ = last(fwalker.data["ψ′"])
     ψ = fwalker.walker.ψstatus.value
     (log(abs(ψ′)) - log(abs(ψ))) / da
 end
 
-function grad_logpsi_warp(fwalker, model, eref, ψt′, τ)
+function grad_logpsi_warp(fwalker, model, eref, x′, ψt′, τ)
     walker = fwalker.walker
 
     x = walker.configuration
@@ -321,15 +318,15 @@ function grad_logpsi_warp(fwalker, model, eref, ψt′, τ)
     return deriv 
 end
 
-function psi_history(fwalker, model, eref)
+function psi_history(fwalker, model, eref, x′)
     return fwalker.walker.ψstatus_old.value
 end
 
-function psi_history′(fwalker, model, eref, ψt′)
+function psi_history′(fwalker, model, eref, x′, ψt′)
     return ψt′.value(fwalker.walker.configuration_old)
 end
 
-function grad_logpsisquared_old(fwalker, model, eref)
+function grad_logpsisquared_old(fwalker, model, eref, x′)
     ψold = first(fwalker.data["psi history"])
     ψold′ = first(fwalker.data["psi history (secondary)"])
     return (log(abs(ψold′^2)) - log(abs(ψold^2))) / da

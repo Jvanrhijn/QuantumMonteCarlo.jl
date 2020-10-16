@@ -51,21 +51,26 @@ function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng
                 #diffuse_walker!(walker, model.wave_function, τ, eref, sigma, model, rng)
                 move_walker!(walker, τ, model.wave_function, rng)
 
-                el′ = model.hamiltonian(walker.ψstatus, walker.configuration) / walker.ψstatus.value
+                x′ = deepcopy(walker.configuration)
 
-                # accept or reject move
-                p = accept_move!(walker, τ, rng)
+                p = compute_acceptance!(walker, τ)
                 q = 1 - p
 
-                # store local energy
+                el′ = model.hamiltonian(walker.ψstatus, x′) / walker.ψstatus.value
+
+                # accept or reject move
+                accept_move!(walker, p, rng)
+
                 s = eref - el
                 s′ = eref - el′
+
+                # store local energy
                 # and update walker weight
                 if p == 0
                     local_energy_ensemble[i] = el
                     exponent = τ * q*s
                 else
-                    local_energy_ensemble[i] = (p*el′ + q*el)
+                    local_energy_ensemble[i] = p*el′ + q*el
                     exponent = τ * (0.5p * (s + s′) + q*s)
                 end
 
@@ -73,12 +78,13 @@ function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng
 
                 weight_ensemble[i] = walker.weight
 
-                # update FatWalker with observables computed at this
+                # update FatWalker with observables computed at latest
                 # configuration
+                # pass in also x′ (i.e. the proposed move), which may or
+                # may not be equal to x_new
                 if j > neq
-                    accumulate_observables!(fwalker, model, eref)
+                    accumulate_observables!(fwalker, model, eref, x′)
                 end
-
 
             end
 

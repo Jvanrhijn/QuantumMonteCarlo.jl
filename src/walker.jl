@@ -70,21 +70,20 @@ mutable struct FatWalker
     FatWalker(walker) = FatWalker(walker, OrderedDict{String, Function}())
 end
 
-function accumulate_observables!(fwalker, model, eref)
-    #for (key, func) in fwalker.observables
+function accumulate_observables!(fwalker, model, eref, x′)
     for key in fwalker.observable_names
         func = fwalker.observables[key]
-        new_val = func(fwalker, model, eref)
-        
+        val = func(fwalker, model, eref, x′)
+
         # if the history is saturated, subtract the oldest from sum
         if length(fwalker.data[key]) == fwalker.data[key].capacity
             fwalker.history_sums[key] = fwalker.history_sums[key] .- first(fwalker.data[key])
         end
 
         # add new value to history sum
-        fwalker.history_sums[key] = fwalker.history_sums[key] .+ new_val
+        fwalker.history_sums[key] = fwalker.history_sums[key] .+ val
 
-        push!(fwalker.data[key], new_val)
+        push!(fwalker.data[key], val)
 
     end
     push!(fwalker.data["Weight"], fwalker.walker.weight)
