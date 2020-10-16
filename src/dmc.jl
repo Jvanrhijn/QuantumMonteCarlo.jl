@@ -47,13 +47,30 @@ function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng
 
 
                 # perform drift-diffuse step
-                sigma = j > neq ? sqrt(variance_estimate[j-neq] * nwalkers) : 0.0
-                diffuse_walker!(walker, model.wave_function, τ, eref, sigma, model, rng)
+                #sigma = j > neq ? sqrt(variance_estimate[j-neq] * nwalkers) : 0.0
+                #diffuse_walker!(walker, model.wave_function, τ, eref, sigma, model, rng)
+                move_walker!(walker, τ, model.wave_function, rng)
 
                 el′ = model.hamiltonian(walker.ψstatus, walker.configuration) / walker.ψstatus.value
 
+                # accept or reject move
+                p = accept_move!(walker, τ, rng)
+                q = 1 - p
+
                 # store local energy
-                local_energy_ensemble[i] = el′
+                s = eref - el
+                s′ = eref - el′
+                # and update walker weight
+                if p == 0
+                    local_energy_ensemble[i] = el
+                    exponent = τ * q*s
+                else
+                    local_energy_ensemble[i] = (p*el′ + q*el)
+                    exponent = τ * (0.5p * (s + s′) + q*s)
+                end
+
+                walker.weight *= exp(exponent)
+
                 weight_ensemble[i] = walker.weight
 
                 # update FatWalker with observables computed at this
