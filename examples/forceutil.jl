@@ -117,12 +117,8 @@ function grads(fwalker, model, eref, ψ′, τ)
     arg = p*S + 1 - p
     argsec = psec*S′ + 1 - psec
     
-    #return (log(abs(argsec)) - log(abs(arg))) / da
-    if x == xprev
-        (log(abs(argsec)) - log(abs(arg))) / da
-    else
-        (log(abs(S′)) - log(abs(S))) / da
-    end
+    (log(abs(argsec)) - log(abs(arg))) / da
+
 end
 
 function grads_warp(fwalker, model, eref, ψt′, τ)
@@ -177,21 +173,18 @@ function grads_warp(fwalker, model, eref, ψt′, τ)
     arg = p*S + 1 - p
     argsec = psec*S′ + 1 - psec
 
-    if x == xprev
-        (log(abs(argsec)) - log(abs(arg))) / da
-    else
-        (log(abs(S′)) - log(abs(S))) / da
-    end
+    (log(abs(argsec)) - log(abs(arg))) / da
 
 end
 
 function gradt(fwalker, model, eref, ψ′, τ)
-    ∇ψ = fwalker.walker.ψstatus_old.gradient
-    ψ = fwalker.walker.ψstatus_old.value
-    v = ∇ψ / ψ
 
     x′ = fwalker.walker.configuration
     x = fwalker.walker.configuration_old
+
+    ∇ψ = fwalker.walker.ψstatus_old.gradient
+    ψ = fwalker.walker.ψstatus_old.value
+    v = ∇ψ / ψ
 
     ∇ψsec = ψ′.gradient(x)
     ψsec = ψ′.value(x)
@@ -223,22 +216,15 @@ function gradt(fwalker, model, eref, ψ′, τ)
     arg = p*t + 1 - p
     arg′ = psec*t′ + 1 - psec
 
-    #return (t′ - t) / da
-    #return (log(abs(arg′)) - log(abs(arg))) / da
-
     ∇ₐv = (vsec - v) / da
     ∇ₐt = (t′ - t) / da
     ∇ₐp = (psec - p) / da
 
-    #p * t / (p*t + 1 - p) * dot(u, ∇ₐv)
+    argsec = psec*t′ + 1 - psec
+    arg = p*t + 1 - p
 
-    if x == x′
-        (p*∇ₐt + (1 -t) * ∇ₐp) / (p*t + 1 - p)
-    else
-        #dot(u, ∇ₐv)
-        (log(abs(t′)) - log(abs(t))) / da
-    end
-
+    (log(abs(argsec)) - log(abs(arg))) / da
+  
 end
 
 function gradt_warp(fwalker, model, eref, ψt′, τ)
@@ -290,12 +276,10 @@ function gradt_warp(fwalker, model, eref, ψt′, τ)
     ∇ₐt = (t′ - t) / da
     ∇ₐp = (psec - p) / da
 
-    if x == xprev
-        (p*∇ₐt + (1 - t) * ∇ₐp) / (p*t + 1 - p)
-    else
-        #dot(u, ∇ₐv)
-        (log(abs(t′)) - log(abs(t))) / da
-    end
+    argsec = psec*t′ + 1 - psec
+    arg = p*t + 1 - p
+
+    (log(abs(argsec)) - log(abs(arg))) / da
 
 end
 
