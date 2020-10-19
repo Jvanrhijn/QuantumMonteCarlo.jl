@@ -8,8 +8,8 @@ using StatsBase
 using QuantumMonteCarlo
 
 # Force computation settings and import
-const a = 1
-const da = 1e-5
+a = 1
+da = 1e-5
 
 # Setting up the hamiltonian
 hamiltonian(ψstatus, x) = -0.5*ψstatus.laplacian
@@ -20,7 +20,7 @@ hamiltonian_recompute′(ψ, x) = -0.5*ψ.laplacian(x)
 include("forceutil.jl")
 
 # DMC settings
-τ = 1e-2
+τ = 1e-1
 nwalkers = 10
 num_blocks = 100
 steps_per_block = trunc(Int64, 1/τ)
@@ -40,14 +40,14 @@ end
 
 ψtrial = WaveFunction(
     ψpib,
-    x -> -2x,
-    x -> -2
+    x -> abs(x[1]) > a ? zeros(size(x)) : -2x,
+    x -> abs(x[1]) > a ? 0.0 : -2
 )
 
 ψtrial′ = WaveFunction(
     ψpib′,
-    x -> -2x,
-    x -> -2
+    x -> abs(x[1]) > a + da ? zeros(size(x)) : -2x,
+    x -> abs(x[1]) > a + da ? 0.0 : -2
 )
 
 model = Model(

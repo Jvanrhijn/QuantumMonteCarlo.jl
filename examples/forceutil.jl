@@ -68,215 +68,134 @@ function psi_sec_old(fwalker, model, eref, x′, ψ′)
     ψ′.value(fwalker.walker.configuration_old)
 end
 
-function grads(fwalker, model, eref, x′, ψ′, τ)
-    walker = fwalker.walker
-    ∇ₐel = last(fwalker.data["grad el"])
-    xprev = fwalker.walker.configuration_old
-    x = fwalker.walker.configuration
-
-
-    el = last(fwalker.data["Local energy"])
-    el′ = last(fwalker.data["Local energy (secondary)"])
-
-    ψ = walker.ψstatus.value
-    ∇ψ = walker.ψstatus.gradient
-    v = ∇ψ / ψ
-
-    ψold = walker.ψstatus_old.value
-    ∇ψold = walker.ψstatus_old.gradient
-    vold = ∇ψold / ψold
-
-    ψsec = last(fwalker.data["ψ′"])
-    ∇ψsec = last(fwalker.data["∇ψ′"])
-    vsec = ∇ψsec / ψsec
-
-    ψsec_old = last(fwalker.data["ψ′_old"])
-    ∇ψsec_old = last(fwalker.data["∇ψ′_old"])
-    vsec_old = ∇ψsec_old / ψsec_old
-
-    el_prev = model.hamiltonian_recompute(model.wave_function, xprev) / model.wave_function.value(xprev)
-    el_prev′ = hamiltonian_recompute′(ψ′, xprev) / ψ′.value(xprev)
-
-    s = (eref - el)# * ratio
-    sprev = (eref - el_prev)# * ratio_old
-    S = exp(0.5 * (s + sprev) * τ)
-
-    s′ = (eref - el′)# * ratio_sec
-    sprev′ = (eref - el_prev′)# * ratio_sec_old
-    S′ = exp(0.5 * (s′ + sprev′) * τ)
-
-    num = exp.(-norm(xprev .- x .- v*τ)^2 / 2τ)
-    denom = exp.(-norm(x .- xprev .- vold*τ)^2 / 2τ)
-
-    numsec = exp.(-norm(xprev .- x .- vsec*τ)^2 / 2τ)
-    denomsec = exp.(-norm(x .- xprev .- vsec_old*τ)^2 / 2τ)
-
-    p = min(1, ψ^2 / ψold^2 * num / denom)
-    psec = min(1, ψsec^2 / ψsec_old^2 * numsec / denomsec)
-
-    #arg = p*S + 1 - p
-    #argsec = psec*S′ + 1 - psec
-    arg = S
-    argsec = S′
-    
-    (log(abs(argsec)) - log(abs(arg))) / da
-
-end
-
-function grads_warp(fwalker, model, eref, x′, ψt′, τ)
-    walker = fwalker.walker
-
-    x = walker.configuration
-    xprev = walker.configuration_old
-
-    ψ = walker.ψstatus.value
-    ∇ψ = walker.ψstatus.gradient
-    v = ∇ψ / ψ
-
-    ψ′ = last(fwalker.data["ψ′"])
-    ∇ψ′ = last(fwalker.data["∇ψ′"])
-    v′ = ∇ψ′ / ψ′
-
-    ψprev = walker.ψstatus_old.value
-    ∇ψprev = walker.ψstatus_old.gradient
-    vprev = ∇ψprev / ψprev
-
-    ψ′prev = last(fwalker.data["ψ′_old"])
-    ∇ψ′prev = last(fwalker.data["∇ψ′_old"])
-    v′prev = ∇ψ′prev / ψ′prev
-
-    # perform warp
-    xwarp , _ = node_warp(x, ψ, ∇ψ, ψ′, ∇ψ′, τ)
-    xwarpprev, _ = node_warp(xprev, ψprev, ∇ψprev, ψ′prev, ∇ψ′prev, τ)
-
-    el = last(fwalker.data["Local energy"])
-    el′ = hamiltonian_recompute′(ψt′, xwarp) / ψt′.value(xwarp)
-
-    el_prev = model.hamiltonian_recompute(model.wave_function, xprev) / model.wave_function.value(xprev)
-    el_prev′ = hamiltonian_recompute′(ψt′, xwarpprev) / ψt′.value(xwarpprev)
-
-    sprev = (eref - el_prev)# * ratio_prev
-    s = (eref - el)# * ratio
-    S = exp(0.5τ * (s + sprev))
-    
-    sprev′ = (eref - el_prev′)
-    s′ = (eref - el′)
-    S′ = exp(0.5τ * (sprev′ + s′))
-
-    num = exp.(-norm(xprev .- x .- v*τ)^2 / 2τ)
-    denom = exp.(-norm(x .- xprev .- vprev*τ)^2 / 2τ)
-
-    numsec = exp.(-norm(xprev .- x .- v′*τ)^2 / 2τ)
-    denomsec = exp.(-norm(x .- xprev .- v′prev*τ)^2 / 2τ)
-
-    p = min(1, ψ^2 / ψprev^2 * num / denom)
-    psec = min(1, ψ′^2 / ψ′prev^2 * numsec / denomsec)
-
-#    arg = p*S + 1 - p
-#    argsec = psec*S′ + 1 - psec
-    arg = S
-    argsec = S′
-
-    (log(abs(argsec)) - log(abs(arg))) / da
-
-end
-
-function gradt(fwalker, model, eref, x′, ψ′, τ)
+function grads(fwalker, model, eref, x′, ψt′, τ)
 
     x = fwalker.walker.configuration_old
-    x′ = fwalker.walker.configuration
 
-    ψ = model.wave_function.value(x)
-    ∇ψ = model.wave_function.gradient(x)
-    v = ∇ψ / ψ
+    ψ = model.wave_function
 
-    ∇ψsec = ψ′.gradient(x)
-    ψsec = ψ′.value(x)
-    vsec = ∇ψsec / ψsec
+    el(r) = model.hamiltonian_recompute(ψ, r) / ψ.value(r)
+    els(r) = hamiltonian_recompute(ψt′, r) / ψt′.value(r)
 
-    ψnew = model.wave_function.value(x′)
-    ∇ψnew = model.wave_function.gradient(x′)
-    vnew = ∇ψnew / ψnew
+    v(r) = ψ.gradient(r) / ψ.value(r)
+    vs(r) = ψt′.gradient(r) / ψt′.value(r)
 
-    ψnew_sec = ψ′.value(x′)
-    ∇ψnew_sec = ψ′.gradient(x′)
-    vnew_sec = ∇ψnew_sec / ψnew_sec
+    t(r′, r) = exp(-norm(r′ - r - v(r)*τ)^2 / 2τ)
+    ts(r′, r) = exp(-norm(r′ - r - vs(r)*τ)^2 / 2τ)
 
-    num = exp.(-norm(x .- x′ .- vnew*τ)^2 / 2τ)
-    denom = exp.(-norm(x′ .- x .- v*τ)^2 / 2τ)
+    s(r) = eref - el(r)
+    ss(r) = eref - els(r)
 
-    numsec = exp.(-norm(x .- x′ .- vnew_sec*τ)^2 / 2τ)
-    denomsec = exp.(-norm(x′ .- x .- vsec*τ)^2 / 2τ)
+    p(r′, r) = min(1, (ψ.value(r′) / ψ.value(r))^2 * t(r, r′) / t(r′, r))
+    q(r′, r) = 1 - p(r′, r)
+    ps(r′, r) = min(1, (ψt′.value(r′) / ψt′.value(r))^2 * ts(r, r′) / ts(r′, r))
+    qs(r′, r) = 1 - ps(r′, r)
 
-    p = min(1, ψnew^2 / ψ^2 * num / denom)
-    psec = min(1, ψnew_sec^2 / ψsec^2 * numsec / denomsec)
+    S(r′, r) = (0.5p(r′, r) * (s(r′) + s(r)) + q(r′, r) * s(r)) * τ
+    Ss(r′, r) = (0.5ps(r′, r) * (ss(r′) + ss(r)) + qs(r′, r) * ss(r)) * τ
 
-    u = x′ - x - v*τ
-    usec = x′ - x - vsec*τ
+    #deriv = (log(abs(ps(x′, x) * ss(x′, x))) - log(abs(p(x′, x) * s(x′, x)))) / da
+    deriv = (Ss(x′, x) - S(x′, x)) / da
 
-    tsec = exp(-norm(usec)^2 / 2τ)
-    tsec_rr = exp(-norm(vsec*τ)^2 / 2τ)
-    t = exp(-norm(u)^2 / 2τ)
-    t_rr = exp(-norm(v*τ)^2 / 2τ)
-
-    argsec = psec*tsec + (1 - psec)*tsec_rr
-    arg = p*t + (1 - p)*t_rr
-
-    (log(abs(argsec)) - log(abs(arg))) / da
+    return deriv
   
 end
 
-function gradt_warp(fwalker, model, eref, x, ψt′, τ)
-    walker = fwalker.walker
+function grads_warp(fwalker, model, eref, x′, ψt′, τ)
 
-    xprev = walker.configuration_old
+    x = fwalker.walker.configuration_old
 
-    ψ = model.wave_function.value(x)
-    ∇ψ = model.wave_function.gradient(x)
-    v = ∇ψ / ψ
+    ψ = model.wave_function
 
-    ψ′ = model.wave_function.value(x)
-    ∇ψ′ = model.wave_function.gradient(x)
+    el(r) = model.hamiltonian_recompute(ψ, r) / ψ.value(r)
+    els(r) = hamiltonian_recompute(ψt′, r) / ψt′.value(r)
 
-    ψprev = model.wave_function.value(xprev)
-    ∇ψprev = model.wave_function.gradient(xprev)
-    vprev = ∇ψprev / ψprev
+    v(r) = ψ.gradient(r) / ψ.value(r)
+    vs(r) = ψt′.gradient(r) / ψt′.value(r)
 
-    ψ′prev = ψtrial′.value(xprev)
-    ∇ψ′prev = ψtrial′.gradient(xprev)
+    t(r′, r) = exp(-norm(r′ - r - v(r)*τ)^2 / 2τ)
+    ts(r′, r) = exp(-norm(r′ - r - vs(r)*τ)^2 / 2τ)
+
+    s(r) = eref - el(r)
+    ss(r) = eref - els(r)
+
+    p(r′, r) = min(1, (ψ.value(r′) / ψ.value(r))^2 * t(r, r′) / t(r′, r))
+    q(r′, r) = 1 - p(r′, r)
+    ps(r′, r) = min(1, (ψt′.value(r′) / ψt′.value(r))^2 * ts(r, r′) / ts(r′, r))
+    qs(r′, r) = 1 - ps(r′, r)
+
+    S(r′, r) = (0.5p(r′, r) * (s(r′) + s(r)) + q(r′, r) * s(r)) * τ
+    Ss(r′, r) = (0.5ps(r′, r) * (ss(r′) + ss(r)) + qs(r′, r) * ss(r)) * τ
 
     # perform warp
-    xwarp , _ = node_warp(x, ψ, ∇ψ, ψ′, ∇ψ′, τ)
-    xwarpprev, _ = node_warp(xprev, ψprev, ∇ψprev, ψ′prev, ∇ψ′prev, τ)
+    x̅, _ = node_warp(x, ψ.value(x), ψ.gradient(x), ψt′.value(x), ψt′.gradient(x), τ)
+    x̅′, _ = node_warp(x′, ψ.value(x′), ψ.gradient(x′), ψt′.value(x′), ψt′.gradient(x′), τ)
 
-    # compute warped drift
-    ∇ψ′_old_warp = ψt′.gradient(xwarpprev)
-    ψ′_old_warp = ψt′.value(xwarpprev)
-    vsec_warp_prev = ∇ψ′_old_warp / ψ′_old_warp
-    vsec_warp = ψt′.gradient(xwarp) / ψt′.value(xwarp)
+    #deriv = (log(abs(ps(x′, x) * ss(x′, x))) - log(abs(p(x′, x) * s(x′, x)))) / da
+    deriv = (Ss(x̅′, x̅) - S(x̅′, x̅)) / da
 
-    num = exp.(-norm(xprev .- x .- v*τ)^2 / 2τ)
-    denom = exp.(-norm(x .- xprev .- vprev*τ)^2 / 2τ)
+    return deriv
 
-    numsec = exp.(-norm(xwarpprev .- xwarp .- vsec_warp*τ)^2 / 2τ)
-    denomsec = exp.(-norm(xwarp .- xwarpprev .- vsec_warp_prev*τ)^2 / 2τ)
+end
 
-    p = min(1, ψ^2 / ψprev^2 * num / denom)
-    psec = min(1, ψ′^2 / ψ′prev^2 * numsec / denomsec)
+function gradt(fwalker, model, eref, x′, ψt′, τ)
 
-    u = x - xprev - vprev*τ
-    u′ = xwarp - xwarpprev - vsec_warp_prev*τ
+    x = fwalker.walker.configuration_old
 
-    t′ = exp(-norm(u′)^2 / 2τ)
-    t′_rr = exp(-norm(vsec_warp_prev*τ)^2 / 2τ)
+    ψ = model.wave_function
 
-    t = exp(-norm(u)^2 / 2τ)
-    t_rr = exp(-norm(vprev*τ)^2 / 2τ)
+    el(r) = model.hamiltonian_recompute(ψ, r) / ψ.value(r)
+    els(r) = hamiltonian_recompute(ψt′, r) / ψt′.value(r)
 
-    argsec = psec*t′ + (1 - psec) * t′_rr
-    arg = p*t + (1 - p) * t_rr
+    v(r) = ψ.gradient(r) / ψ.value(r)
+    vs(r) = ψt′.gradient(r) / ψt′.value(r)
 
-    (log(abs(argsec)) - log(abs(arg))) / da
+    t(r′, r) = exp(-norm(r′ - r - v(r)*τ)^2 / 2τ)
+    ts(r′, r) = exp(-norm(r′ - r - vs(r)*τ)^2 / 2τ)
+
+    p(r′, r) = min(1, (ψ.value(r′) / ψ.value(r))^2 * t(r, r′) / t(r′, r))
+    q(r′, r) = 1 - p(r′, r)
+    ps(r′, r) = min(1, (ψt′.value(r′) / ψt′.value(r))^2 * ts(r, r′) / ts(r′, r))
+    qs(r′, r) = 1 - ps(r′, r)
+
+    #deriv = (log(abs(ps(x′, x) * ts(x′, x))) - log(abs(p(x′, x) * t(x′, x)))) / da
+    deriv = (log(abs(ps(x′, x) * ts(x′, x) + 1 - ps(x′, x))) - log(abs(p(x′, x) * t(x′, x) + 1 - p(x′, x)))) / da
+
+    return deriv
+  
+end
+
+function gradt_warp(fwalker, model, eref, x′, ψt′, τ)
+    walker = fwalker.walker
+    x = walker.configuration_old
+
+    ψ = model.wave_function
+
+    el(r) = model.hamiltonian_recompute(ψ, r) / ψ.value(r)
+    els(r) = hamiltonian_recompute(ψt′, r) / ψt′.value(r)
+
+    v(r) = ψ.gradient(r) / ψ.value(r)
+    vs(r) = ψt′.gradient(r) / ψt′.value(r)
+
+    t(r′, r) = exp(-norm(r′ - r - v(r)*τ)^2 / 2τ)
+    ts(r′, r) = exp(-norm(r′ - r - vs(r)*τ)^2 / 2τ)
+
+    s(r′, r) = τ * (eref - 0.5 * (el(r) + el(r′))) * 0
+    ss(r′, r) = τ * (eref - 0.5 * (els(r) + els(r′))) * 0
+
+    g(r′, r) = t(r′, r) * exp(s(r′, r))
+    gs(r′, r) = ts(r′, r) * exp(ss(r′, r))
+
+    p(r′, r) = min(1, (ψ.value(r′) / ψ.value(r)) ^2 * t(r, r′) / t(r′, r))
+    q(r′, r) = 1 - p(r′, r)
+    ps(r′, r) = min(1, (ψt′.value(r′) / ψt′.value(r)) ^2 * ts(r, r′) / ts(r′, r))
+    qs(r′, r) = 1 - ps(r′, r)
+
+    # perform warp
+    x̅, _ = node_warp(x, ψ.value(x), ψ.gradient(x), ψt′.value(x), ψt′.gradient(x), τ)
+    x̅′, _ = node_warp(x′, ψ.value(x′), ψ.gradient(x′), ψt′.value(x′), ψt′.gradient(x′), τ)
+
+    deriv = (log(abs(ps(x̅′, x̅) * ts(x̅′, x̅))) - log(abs(p(x̅′, x̅) * t(x̅′, x̅)))) / da
 
 end
 

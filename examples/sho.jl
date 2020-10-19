@@ -22,8 +22,8 @@ include("forceutil.jl")
 
 # DMC settings
 τ = 1e-2
-nwalkers = 50
-num_blocks = 1000
+nwalkers = 40
+num_blocks = 100
 steps_per_block = trunc(Int64, 1/τ)
 neq = 10
 lag = trunc(Int64, 10*steps_per_block)
@@ -31,12 +31,12 @@ eref = 0.625
 
 # Trial wave function
 function ψsho(x::Array{Float64})
-    a^0.25 * exp(- a * norm(x)^2)
+    exp(- a * norm(x)^2)
 end
 
 function ψsho′(x::Array{Float64})
     a′ = a + da
-    a′^0.25 * exp(- a′ * norm(x)^2)
+    exp(- a′ * norm(x)^2)
 end
 
 ψtrial = WaveFunction(
@@ -61,29 +61,29 @@ model = Model(
 # TODO: fix the time spent in iterating over dicts
 # Observables needed for force computation
 observables = OrderedDict(
-    "ψ′" => (fwalker, model, eref) -> psi_sec(fwalker, model, eref, ψtrial′),
-    "∇ψ′" => (fwalker, model, eref) -> gradpsi_sec(fwalker, model, eref, ψtrial′),
-    "ψ′_old" => (fwalker, model, eref) -> psi_sec_old(fwalker, model, eref, ψtrial′),
-    "∇ψ′_old" => (fwalker, model, eref) -> gradpsi_sec_old(fwalker, model, eref, ψtrial′),
+    "ψ′" => (fwalker, model, eref, xp) -> psi_sec(fwalker, model, eref, xp, ψtrial′),
+    "∇ψ′" => (fwalker, model, eref, xp) -> gradpsi_sec(fwalker, model, eref, xp, ψtrial′),
+    "ψ′_old" => (fwalker, model, eref, xp) -> psi_sec_old(fwalker, model, eref, xp, ψtrial′),
+    "∇ψ′_old" => (fwalker, model, eref, xp) -> gradpsi_sec_old(fwalker, model, eref, xp, ψtrial′),
     "Local energy" => local_energy,
-    "Local energy (secondary)" => (fwalker, model, eref) -> local_energy_sec(fwalker, model, eref, ψtrial′),
-    "grad el" => (fwalker, model, eref) -> gradel(fwalker, model, eref, ψtrial′),
-    "grad el (warp)" => (fwalker, model, eref) -> gradel_warp(fwalker, model, eref, ψtrial′, τ),
-    "grad log psi" => (fwalker, model, eref) -> grad_logpsi(fwalker, model, eref, ψtrial′),
-    "grad log psi (warp)" => (fwalker, model, eref) -> grad_logpsi_warp(fwalker, model, eref, ψtrial′, τ),
-    "grad s" => (fwalker, model, eref) -> grads(fwalker, model, eref, ψtrial′, τ),
-    "grad t" => (fwalker, model, eref) -> gradt(fwalker, model, eref, ψtrial′, τ),
-    "grad s (warp)" => (fwalker, model, eref) -> grads_warp(fwalker, model, eref, ψtrial′, τ),
-    "grad t (warp)" => (fwalker, model, eref) -> gradt_warp(fwalker, model, eref, ψtrial′, τ),
+    "Local energy (secondary)" => (fwalker, model, eref, xp) -> local_energy_sec(fwalker, model, eref, xp, ψtrial′),
+    "grad el" => (fwalker, model, eref, xp) -> gradel(fwalker, model, eref, xp, ψtrial′),
+    "grad el (warp)" => (fwalker, model, eref, xp) -> gradel_warp(fwalker, model, eref, xp, ψtrial′, τ),
+    "grad log psi" => (fwalker, model, eref, xp) -> grad_logpsi(fwalker, model, eref, xp, ψtrial′),
+    "grad log psi (warp)" => (fwalker, model, eref, xp) -> grad_logpsi_warp(fwalker, model, eref, xp, ψtrial′, τ),
+    "grad s" => (fwalker, model, eref, xp) -> grads(fwalker, model, eref, xp, ψtrial′, τ),
+    "grad t" => (fwalker, model, eref, xp) -> gradt(fwalker, model, eref, xp, ψtrial′, τ),
+    "grad s (warp)" => (fwalker, model, eref, xp) -> grads_warp(fwalker, model, eref, xp, ψtrial′, τ),
+    "grad t (warp)" => (fwalker, model, eref, xp) -> gradt_warp(fwalker, model, eref, xp, ψtrial′, τ),
     #These are placeholders, need to collect cutoff-ed versions as well
-    "grad s (no cutoff)" => (fwalker, model, eref) -> grads(fwalker, model, eref, ψtrial′, τ),
-    "grad t (no cutoff)" => (fwalker, model, eref) -> gradt(fwalker, model, eref, ψtrial′, τ),
-    "grad s (warp, no cutoff)" => (fwalker, model, eref) -> grads_warp(fwalker, model, eref, ψtrial′, τ),
-    "grad t (warp, no cutoff)" => (fwalker, model, eref) -> gradt_warp(fwalker, model, eref, ψtrial′, τ),
-    "grad log j" => (fwalker, model, eref) -> gradj(fwalker, model, eref, τ),
-    "sum grad log j" => (fwalker, model, eref) -> gradj(fwalker, model, eref, τ),
+    "grad s (no cutoff)" => (fwalker, model, eref, xp) -> grads(fwalker, model, eref, xp, ψtrial′, τ),
+    "grad t (no cutoff)" => (fwalker, model, eref, xp) -> gradt(fwalker, model, eref, xp, ψtrial′, τ),
+    "grad s (warp, no cutoff)" => (fwalker, model, eref, xp) -> grads_warp(fwalker, model, eref, xp, ψtrial′, τ),
+    "grad t (warp, no cutoff)" => (fwalker, model, eref, xp) -> gradt_warp(fwalker, model, eref, xp, ψtrial′, τ),
+    "grad log j" => (fwalker, model, eref, xp) -> gradj(fwalker, model, eref, xp, τ),
+    "sum grad log j" => (fwalker, model, eref, xp) -> gradj(fwalker, model, eref, xp, τ),
     "psi history" => psi_history,
-    "psi history (secondary)" => (fwalker, model, eref) -> psi_history′(fwalker, model, eref, ψtrial′),
+    "psi history (secondary)" => (fwalker, model, eref, xp) -> psi_history′(fwalker, model, eref, xp, ψtrial′),
     "grad log psi squared old" => grad_logpsisquared_old,
 )
 
