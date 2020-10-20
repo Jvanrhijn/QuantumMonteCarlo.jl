@@ -60,12 +60,7 @@ model = Model(
 # TODO: fix the time spent in iterating over dicts
 # Observables needed for force computation
 observables = OrderedDict(
-    "ψ′" => (fwalker, model, eref, x) -> psi_sec(fwalker, model, eref, x, ψtrial′),
-    "∇ψ′" => (fwalker, model, eref, x) -> gradpsi_sec(fwalker, model, eref, x, ψtrial′),
-    "ψ′_old" => (fwalker, model, eref, x) -> psi_sec_old(fwalker, model, eref, x, ψtrial′),
-    "∇ψ′_old" => (fwalker, model, eref, x) -> gradpsi_sec_old(fwalker, model, eref, x, ψtrial′),
     "Local energy" => local_energy,
-    "Local energy (secondary)" => (fwalker, model, eref, x) -> local_energy_sec(fwalker, model, eref, x, ψtrial′),
     "grad el" => (fwalker, model, eref, x) -> gradel(fwalker, model, eref, x, ψtrial′),
     "grad el (warp)" => (fwalker, model, eref, x) -> gradel_warp(fwalker, model, eref, x, ψtrial′, τ),
     "grad log psi" => (fwalker, model, eref, x) -> grad_logpsi(fwalker, model, eref, x, ψtrial′),
@@ -79,11 +74,8 @@ observables = OrderedDict(
     "grad t (no cutoff)" => (fwalker, model, eref, x) -> gradt(fwalker, model, eref, x, ψtrial′, τ),
     "grad s (warp, no cutoff)" => (fwalker, model, eref, x) -> grads_warp(fwalker, model, eref, x, ψtrial′, τ),
     "grad t (warp, no cutoff)" => (fwalker, model, eref, x) -> gradt_warp(fwalker, model, eref, x, ψtrial′, τ),
-    "grad log j" => (fwalker, model, eref, x) -> gradj(fwalker, model, eref, x, τ),
-    "sum grad log j" => (fwalker, model, eref, x) -> gradj(fwalker, model, eref, x, τ),
-    "psi history" => psi_history,
-    "psi history (secondary)" => (fwalker, model, eref, x) -> psi_history′(fwalker, model, eref, x, ψtrial′),
-    "grad log psi squared old" => grad_logpsisquared_old,
+    "grad log j" => (fwalker, model, eref, x) -> gradj(fwalker, model, eref, x, ψtrial′, τ),
+    "sum grad log j" => (fwalker, model, eref, x) -> gradj(fwalker, model, eref, x, ψtrial′, τ),
 )
 
 #rng = MersenneTwister(160224267)
@@ -106,8 +98,6 @@ fat_walkers = [QuantumMonteCarlo.FatWalker(
         "grad s (warp, no cutoff)" => CircularBuffer(lag),
         "grad t (warp, no cutoff)" => CircularBuffer(lag),
         "sum grad log j" => CircularBuffer(lag),
-        "psi history" => CircularBuffer(lag),
-        "psi history (secondary)" => CircularBuffer(lag),
     ),
     [
         ("Local energy", "grad log psi"),
@@ -122,7 +112,6 @@ fat_walkers = [QuantumMonteCarlo.FatWalker(
         ("Local energy", "grad t (warp, no cutoff)"),
         ("Local energy", "grad log j"),
         ("Local energy", "sum grad log j"),
-        ("Local energy", "grad log psi squared old")
     ]
     ) for walker in walkers
 ]

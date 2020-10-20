@@ -111,10 +111,6 @@ def compute_forces(fpath):
     el_times_psilogderiv = data["Local energy * grad log psi"][()][1:]
     el_times_psilogderiv_warp = data["Local energy * grad log psi (warp)"][()][1:]
 
-    # Get Psi^2 old derivative for exact pulay force approximation
-    el_times_psi_squared_logderiv_old = data["Local energy * grad log psi squared old"][()][1:]
-    psi_squared_logderiv_old = data["grad log psi squared old"][()][1:]
-
     # Hellmann-Feynman force
     force_hf = -local_e_deriv
     force_hf_warp = -local_e_deriv_warp
@@ -123,7 +119,6 @@ def compute_forces(fpath):
     force_pulay_exact = -(
                 el_times_tderiv_sum - energy*tderiv_sum \
             +   el_times_sderiv_sum - energy*sderiv_sum \
-            +   el_times_psi_squared_logderiv_old - energy*psi_squared_logderiv_old
             )
 
     force_pulay_exact_warp = -(
@@ -145,7 +140,7 @@ def compute_forces(fpath):
 
     force_pulay_vd = -(
             2 * (el_times_psilogderiv - energy*psilogderiv) \
-            +    el_times_sderiv_sum - energy*sderiv_sum
+            +   (el_times_sderiv_sum - energy*sderiv_sum)
             )
 
     force_pulay_vd_warp = -(
