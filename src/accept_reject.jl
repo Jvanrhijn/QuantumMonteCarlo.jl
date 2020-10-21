@@ -10,10 +10,14 @@ function move_walker!(walker, τ, ψ, rng::AbstractRNG)
     ∇ψ = walker.ψstatus.gradient
     ∇²ψ = walker.ψstatus.laplacian
 
-    v = cutoff_velocity(∇ψ/ψval, τ)
+    v = ∇ψ / ψval
     
-    x′ = x .+ v*τ .+ sqrt(τ)*randn(rng, Float64, size(x))
+    # Move walker to x′ according to Langevin Itô diffusion
+    # expression taken from https://en.wikipedia.org/wiki/Metropolis-adjusted_Langevin_algorithm
+    # with π(x) = ψ(x)², so ∇log(π) = 2∇log(ψ) = 2∇ψ/ψ.
+    x′ = x .+ v*τ .+ sqrt(τ) * randn(rng, Float64, size(x))
 
+    # Update the walker with this new configuration
     walker.configuration_old .= deepcopy(x)
     walker.ψstatus_old = deepcopy(walker.ψstatus)
 
@@ -32,17 +36,21 @@ function compute_acceptance!(walker, τ)
     ∇ψ = walker.ψstatus_old.gradient
     ∇ψ′ = walker.ψstatus.gradient
     
+    # probability distribution ratio
     ratio = ψ′^2 / ψ^2
 
-    v = cutoff_velocity(∇ψ/ψ, τ)
-    v′ = cutoff_velocity(∇ψ′/ψ′, τ)
+    v = ∇ψ / ψ
+    v′ = ∇ψ′ / ψ′
 
-    num = exp.(-norm(x .- x′ .- 2v′*τ)^2 / 4τ)
-    denom = exp.(-norm(x′ .- x .- 2v*τ)^2 / 4τ)
+    # MALA: compute the acceptance probability p
+    # expression taken from https://en.wikipedia.org/wiki/Metropolis-adjusted_Langevin_algorithm
+    num = exp(-norm(x .- x′ .- v′ * τ)^2 / 2τ)
+    denom = exp(-norm(x′ .- x .- v * τ)^2 / 2τ)
 
     p = min(1.0, ratio * num / denom)
      
-    if sign(ψ) != sign(ψ′) || ψ′ == 0.0
+    # Fixed-node: reject moves that change the sign of ψ
+    if sign(ψ) != sign(ψ′)
         p = 0.0
     end
 
@@ -50,9 +58,14 @@ function compute_acceptance!(walker, τ)
 end
 
 function accept_move!(walker, p, rng::AbstractRNG)
-    # reject move if acceptance too small
-    ξ = rand(rng)
+    # reject move with probability q = 1 - p
+    # generate a uniform random variable on [0, 1]
+    ξ = rand(rng, Uniform(0, 1))
+
+    # if the acceptance probability < ξ, reject the proposed move
     if p < ξ
+        # if rejected, restore the "old" walker configuration
+        # and retrieve the old wave function values
         walker.configuration .= walker.configuration_old
         walker.ψstatus = deepcopy(walker.ψstatus_old)
     end

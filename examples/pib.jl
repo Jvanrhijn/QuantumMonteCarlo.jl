@@ -20,9 +20,9 @@ hamiltonian_recompute′(ψ, x) = -0.5*ψ.laplacian(x)
 include("forceutil.jl")
 
 # DMC settings
-τ = 1e-1
+τ = 0.1e-1
 nwalkers = 10
-num_blocks = 100
+num_blocks = 1000
 steps_per_block = trunc(Int64, 1/τ)
 neq = 10
 lag = trunc(Int64, steps_per_block)
@@ -56,33 +56,31 @@ model = Model(
     ψtrial,
 )
 
-
 # TODO: fix the time spent in iterating over dicts
 # Observables needed for force computation
 observables = OrderedDict(
     "Local energy" => local_energy,
-    "grad el" => (fwalker, model, eref, x) -> gradel(fwalker, model, eref, x, ψtrial′),
-    "grad el (warp)" => (fwalker, model, eref, x) -> gradel_warp(fwalker, model, eref, x, ψtrial′, τ),
-    "grad log psi" => (fwalker, model, eref, x) -> grad_logpsi(fwalker, model, eref, x, ψtrial′),
-    "grad log psi (warp)" => (fwalker, model, eref, x) -> grad_logpsi_warp(fwalker, model, eref, x, ψtrial′, τ),
-    "grad s" => (fwalker, model, eref, x) -> grads(fwalker, model, eref, x, ψtrial′, τ),
-    "grad t" => (fwalker, model, eref, x) -> gradt(fwalker, model, eref, x, ψtrial′, τ),
-    "grad s (warp)" => (fwalker, model, eref, x) -> grads_warp(fwalker, model, eref, x, ψtrial′, τ),
-    "grad t (warp)" => (fwalker, model, eref, x) -> gradt_warp(fwalker, model, eref, x, ψtrial′, τ),
+    "grad el" => (fwalker, model, eref, xp) -> gradel(fwalker, model, eref, xp, ψtrial′),
+    "grad el (warp)" => (fwalker, model, eref, xp) -> gradel_warp(fwalker, model, eref, xp, ψtrial′, τ),
+    "grad log psi" => (fwalker, model, eref, xp) -> grad_logpsi(fwalker, model, eref, xp, ψtrial′),
+    "grad log psi (warp)" => (fwalker, model, eref, xp) -> grad_logpsi_warp(fwalker, model, eref, xp, ψtrial′, τ),
+    "grad s" => (fwalker, model, eref, xp) -> grads(fwalker, model, eref, xp, ψtrial′, τ),
+    "grad t" => (fwalker, model, eref, xp) -> gradt(fwalker, model, eref, xp, ψtrial′, τ),
+    "grad s (warp)" => (fwalker, model, eref, xp) -> grads_warp(fwalker, model, eref, xp, ψtrial′, τ),
+    "grad t (warp)" => (fwalker, model, eref, xp) -> gradt_warp(fwalker, model, eref, xp, ψtrial′, τ),
     #These are placeholders, need to collect cutoff-ed versions as well
-    "grad s (no cutoff)" => (fwalker, model, eref, x) -> grads(fwalker, model, eref, x, ψtrial′, τ),
-    "grad t (no cutoff)" => (fwalker, model, eref, x) -> gradt(fwalker, model, eref, x, ψtrial′, τ),
-    "grad s (warp, no cutoff)" => (fwalker, model, eref, x) -> grads_warp(fwalker, model, eref, x, ψtrial′, τ),
-    "grad t (warp, no cutoff)" => (fwalker, model, eref, x) -> gradt_warp(fwalker, model, eref, x, ψtrial′, τ),
-    "grad log j" => (fwalker, model, eref, x) -> gradj(fwalker, model, eref, x, ψtrial′, τ),
-    "sum grad log j" => (fwalker, model, eref, x) -> gradj(fwalker, model, eref, x, ψtrial′, τ),
+    "grad s (no cutoff)" => (fwalker, model, eref, xp) -> grads(fwalker, model, eref, xp, ψtrial′, τ),
+    "grad t (no cutoff)" => (fwalker, model, eref, xp) -> gradt(fwalker, model, eref, xp, ψtrial′, τ),
+    "grad s (warp, no cutoff)" => (fwalker, model, eref, xp) -> grads_warp(fwalker, model, eref, xp, ψtrial′, τ),
+    "grad t (warp, no cutoff)" => (fwalker, model, eref, xp) -> gradt_warp(fwalker, model, eref, xp, ψtrial′, τ),
+    "grad log j" => (fwalker, model, eref, xp) -> gradj(fwalker, model, eref, xp, ψtrial′, τ),
+    "sum grad log j" => (fwalker, model, eref, xp) -> gradj(fwalker, model, eref, xp, ψtrial′, τ),
 )
 
-#rng = MersenneTwister(160224267)
-rng = MersenneTwister(9045943585439)
+rng = MersenneTwister(160224267)
 
 # create "Fat" walkers
-walkers = QuantumMonteCarlo.generate_walkers(nwalkers, ψtrial, rng, Uniform(-a/2, a/2), 1)
+walkers = QuantumMonteCarlo.generate_walkers(nwalkers, ψtrial, rng, Uniform(-a, a), 1)
 
 
 fat_walkers = [QuantumMonteCarlo.FatWalker(
@@ -128,8 +126,9 @@ energies, errors = QuantumMonteCarlo.run_dmc!(
     eref,
     rng=rng, 
     neq=neq, 
-    outfile="test.hdf5", #ARGS[1],
-    brancher=stochastic_reconfiguration!,
+    brancher=stochastic_reconfiguration_pyqmc!,
+    outfile="pib.hdf5", #ARGS[1],
     verbosity=:loud,
     branchtime=steps_per_block ÷ 10,
+    #branchtime=5,
 );

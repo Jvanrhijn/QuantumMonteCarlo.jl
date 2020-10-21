@@ -22,6 +22,7 @@ function node_warp(x, ψ, ∇ψ, ψ′, ∇ψ′, τ)
     xwarp = x .+ (d - d′) * u * sign(ψ′) * n′
    
     jac = 1 - u + sign(ψ′*ψ) * dot(n, n′) * (u + (d - d′)*uderiv)
+
     xwarp, jac
 end
 
@@ -32,7 +33,9 @@ function gradel(fwalker, model, eref, x′, ψt′)
     el = model.hamiltonian_recompute(ψ, x) / ψ.value(x)
     el′ = hamiltonian_recompute′(ψt′, x) / ψt′.value(x)
 
-    (el′ - el) / da
+    deriv = (el′ - el) / da
+    #println("$deriv")
+    return deriv
 end
 
 function gradel_warp(fwalker, model, eref, x′, ψt′, τ)
@@ -45,10 +48,13 @@ function gradel_warp(fwalker, model, eref, x′, ψt′, τ)
 
     x̅, jac = node_warp(x, ψ.value(x), ∇ψ(x), ψ′.value(x), ∇ψ′(x), τ)
 
-    el = model.hamiltonian_recompute(ψ, x̅) / ψ.value(x̅)
+    el = model.hamiltonian_recompute(ψ, x) / ψ.value(x)
     el′ = hamiltonian_recompute′(ψt′, x̅) / ψt′.value(x̅)
     
-    (el′ - el) / da
+    deriv = (el′ - el) / da
+    #println("$deriv")
+
+    return deriv
 end
 
 function grads(fwalker, model, eref, x′, ψt′, τ)
@@ -110,8 +116,8 @@ function grads_warp(fwalker, model, eref, x′, ψt′, τ)
     ps(r′, r) = min(1, (ψt′.value(r′) / ψt′.value(r))^2 * ts(r, r′) / ts(r′, r))
     qs(r′, r) = 1 - ps(r′, r)
 
-    S(r′, r) = 0.5τ * (s(r) + s(r′))
-    Ss(r′, r) = 0.5τ * (ss(r) + ss(r′))
+    S(r′, r) = 0.5 * τ * (s(r) + s(r′))
+    Ss(r′, r) = 0.5 * τ * (ss(r) + ss(r′))
     #S(r′, r) = (0.5p(r′, r) * (s(r′) + s(r)) + q(r′, r) * s(r)) * τ
     #Ss(r′, r) = (0.5ps(r′, r) * (ss(r′) + ss(r)) + qs(r′, r) * ss(r)) * τ
 
@@ -119,7 +125,8 @@ function grads_warp(fwalker, model, eref, x′, ψt′, τ)
     x̅, _ = node_warp(x, ψ.value(x), ψ.gradient(x), ψt′.value(x), ψt′.gradient(x), τ)
     x̅′, _ = node_warp(x′, ψ.value(x′), ψ.gradient(x′), ψt′.value(x′), ψt′.gradient(x′), τ)
 
-    deriv = (Ss(x̅′, x̅) - S(x̅′, x̅)) / da
+    deriv = (Ss(x̅′, x̅) - S(x′, x)) / da
+    #deriv = (Ss(x′, x) - S(x′, x)) / da
 
     return deriv
 
@@ -128,9 +135,11 @@ end
 function gradt(fwalker, model, eref, x′, ψt′, τ)
 
     x = fwalker.walker.configuration_old
-    #x′ = fwalker.walker.configuration
+    x′ = fwalker.walker.configuration
 
     ψ = model.wave_function
+
+    ψnew = ψ.value(x′)
 
     v(r) = ψ.gradient(r) / ψ.value(r)
     vs(r) = ψt′.gradient(r) / ψt′.value(r)
@@ -144,10 +153,15 @@ function gradt(fwalker, model, eref, x′, ψt′, τ)
     ps(r′, r) = min(1, (ψt′.value(r′) / ψt′.value(r))^2 * ts(r, r′) / ts(r′, r))
     qs(r′, r) = 1 - ps(r′, r)
 
-    #deriv = (log(abs(ps(x′, x) * ts(x′, x) + qs(x′, x) * ts(x, x))) - log(abs(p(x′, x) * t(x′, x) + q(x′, x) * t(x, x)))) / da
-    #deriv = (log(abs(ts(x′, x))) - log(abs(t(x′, x)))) / da
-    #deriv = (ps(x′, x) * log(abs(ts(x′, x))) - p(x′, x) * log(abs(t(x′, x)))) / da
-    deriv = (ps(x′, x) * log(abs(ts(x′, x))) - p(x′, x) * log(abs(t(x′, x))) + qs(x′, x) * log(abs(ts(x, x))) - q(x′, x) * log(abs(t(x, x)))) / da
+    if ψnew != 0.0
+        deriv = (log(abs(ps(x′, x) * ts(x′, x) + qs(x′, x))) - log(abs(p(x′, x) * t(x′, x) + q(x′, x)))) / da
+        #deriv = (log(abs(ts(x′, x))) - log(abs(t(x′, x)))) / da
+        #deriv = (ps(x′, x) * log(abs(ts(x′, x))) - p(x′, x) * log(abs(t(x′, x)))) / da
+        #deriv = (ps(x′, x) * log(abs(ts(x′, x))) - p(x′, x) * log(abs(t(x′, x))) + qs(x′, x) * log(abs(ts(x, x))) - q(x′, x) * log(abs(t(x, x)))) / da
+    else
+        #deriv = 0.0
+        deriv = (log(abs(ts(x, x))) - log(abs(t(x, x)))) / da
+    end
 
     return deriv
   
@@ -159,6 +173,7 @@ function gradt_warp(fwalker, model, eref, x′, ψt′, τ)
     x′ = fwalker.walker.configuration
 
     ψ = model.wave_function
+    ψnew = ψ.value(x′)
 
     el(r) = model.hamiltonian_recompute(ψ, r) / ψ.value(r)
     els(r) = hamiltanian_recompute′(ψt′, r) / ψt′.value(r)
@@ -178,8 +193,12 @@ function gradt_warp(fwalker, model, eref, x′, ψt′, τ)
     x̅, _ = node_warp(x, ψ.value(x), ψ.gradient(x), ψt′.value(x), ψt′.gradient(x), τ)
     x̅′, _ = node_warp(x′, ψ.value(x′), ψ.gradient(x′), ψt′.value(x′), ψt′.gradient(x′), τ)
 
-    #deriv = (log(abs(ps(x̅′, x̅) * ts(x̅′, x̅) + qs(x̅′, x))) - log(abs(p(x̅′, x̅) * t(x̅′, x̅) + q(x̅′, x)))) / da
-    deriv = (log(abs(ts(x̅′, x̅))) - log(abs(t(x̅′, x̅)))) / da
+    if ψnew != 0.0
+        deriv = (log(abs(ps(x̅′, x̅) * ts(x̅′, x̅) + qs(x̅′, x̅))) - log(abs(p(x′, x) * t(x′, x) + q(x′, x)))) / da
+        #deriv = (log(abs(ts(x̅′, x̅))) - log(abs(t(x′, x)))) / da
+    else
+        deriv = (log(abs(ts(x̅, x̅))) - log(abs(t(x, x)))) / da
+    end
 
     return deriv
 

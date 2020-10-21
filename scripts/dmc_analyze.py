@@ -65,6 +65,7 @@ def compute_forces(fpath):
 
     weights = data["Weight"][()][1:]
     energy = np.average(data["Local energy"][()][1:], weights=weights)
+    print(energy)
 
     # Get Green's function derivatives
     sderiv_sum = data["grad s"][()][1:]        
@@ -124,8 +125,9 @@ def compute_forces(fpath):
     force_pulay_exact_warp = -(
                 el_times_tderiv_sum_warp - energy*tderiv_sum_warp \
             +   el_times_sderiv_sum_warp - energy*sderiv_sum_warp \
-            +   el_times_jderiv_sum - energy*jderiv_sum \
+            +   (el_times_jderiv_sum - energy*jderiv_sum) \
             )
+
 
     force_pulay_exact_nocutoff = -(
                 el_times_tderiv_sum_nocutoff - energy*tderiv_sum_nocutoff \

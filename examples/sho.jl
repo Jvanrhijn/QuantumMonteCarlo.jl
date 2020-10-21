@@ -22,25 +22,25 @@ hamiltonian_recompute′(ψ, x) = -0.5*ψ.laplacian(x) + 0.5 * a′^2 * norm(x)^
 include("forceutil.jl")
 
 # DMC settings
-τ = 1e-3
+τ = 5e-2
 nwalkers = 10
-num_blocks = 1000
+num_blocks = 100
 steps_per_block = trunc(Int64, 1/τ)
 neq = 10
-lag = trunc(Int64, 10*steps_per_block)
+lag = trunc(Int64, steps_per_block)
 #eref = 0.1 * (7a^2 + 1) / a
 #fref = 0.1 * (7 - 1/a^2)
 eref = 0.625
 
 # Trial wave function
 function ψsho(x::Array{Float64})
-    exp(- a * norm(x)^2)
+    exp(- a * norm(x)^2 / 4)
     #1 / (1 + a*norm(x)^2)^2
 end
 
 function ψsho′(x::Array{Float64})
     a′ = a + da
-    exp(- a′ * norm(x)^2)
+    exp(- a′ * norm(x)^2 / 4)
     #1 / (1 + a′*norm(x)^2)^2
 end
 
@@ -125,7 +125,7 @@ fat_walkers = [QuantumMonteCarlo.FatWalker(
     ) for walker in walkers
 ]
 
-fat_walkers = [QuantumMonteCarlo.FatWalker(walker) for walker in walkers]
+#fat_walkers = [QuantumMonteCarlo.FatWalker(walker) for walker in walkers]
 
 ### Actually run DMC
 energies, errors = QuantumMonteCarlo.run_dmc!(
@@ -137,8 +137,8 @@ energies, errors = QuantumMonteCarlo.run_dmc!(
     eref,
     rng=rng, 
     neq=neq, 
-    brancher=stochastic_reconfiguration!,
-    #outfile="sho.hdf5", #ARGS[1],
+    brancher=stochastic_reconfiguration_pyqmc!,
+    outfile="sho.hdf5", #ARGS[1],
     verbosity=:loud,
     branchtime=steps_per_block ÷ 10,
     #branchtime=1,

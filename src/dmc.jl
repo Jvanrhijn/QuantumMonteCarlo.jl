@@ -48,10 +48,7 @@ function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng
                 walker = fwalker.walker
                 el = model.hamiltonian(walker.ψstatus, walker.configuration) / walker.ψstatus.value
 
-
                 # perform drift-diffuse step
-                #sigma = j > neq ? sqrt(variance_estimate[j-neq] * nwalkers) : 0.0
-                #diffuse_walker!(walker, model.wave_function, τ, eref, sigma, model, rng)
                 move_walker!(walker, τ, model.wave_function, rng)
 
                 x′ = deepcopy(walker.configuration)
@@ -66,7 +63,7 @@ function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng
 
                 s = eref - el
                 s′ = eref - el′
-                exponent = 0.5τ * (s + s′)
+                exponent = 0.5 * τ * (s + s′)
 
                 walker.weight *= exp(exponent)
 
@@ -93,11 +90,6 @@ function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng
             block_weight[b] = mean(weight_ensemble)
             block_vmc_energy[b] = mean(local_energy_ensemble)
 
-            if j <= neq
-                eref = 0.5 * (eref + ensemble_energy)
-                #eref = eref - log(block_weight[b])/τ
-            end
-
             if b % branchtime == 0
                 # perform branching
                 brancher(fat_walkers, rng)
@@ -118,9 +110,16 @@ function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng
         block_vmc_energy = mean(block_vmc_energy)
 
         # reset weights every block
-        for walker in fat_walkers
-            walker.walker.weight = 1.0
+        #for walker in fat_walkers
+        #    walker.walker.weight = 1.0
+        #end
+
+        if j <= neq
+            #eref = 0.5 * (eref + block_energy)
+            eref = block_energy - log(block_weight)
+            #eref = eref - log(block_weight[b])/τ
         end
+
 
         # only update energy esimate after block has run
         if j > neq
@@ -135,7 +134,8 @@ function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng
             error_estimate[n+1] = sqrt(variance_estimate[n+1] / n)                
 
             #eref = energy_estimate[n+1] - log(block_weight)
-            eref = 0.5 * (eref + energy_estimate[n+1])
+            #eref = 0.5 * (eref + energy_estimate[n+1])
+            eref = energy_estimate[n+1] - log(block_weight)
 
         end
 

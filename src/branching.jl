@@ -13,6 +13,24 @@ function stochastic_reconfiguration!(walkers, rng::AbstractRNG)
     walkers .= new_walkers
 end
 
+function stochastic_reconfiguration_pyqmc!(walkers, rng::AbstractRNG)
+    weights = map(w -> w.walker.weight, walkers)
+    nconf = length(weights)
+    global_weight = mean(weights)
+    wtot = sum(weights)
+    probability = cumsum(weights / wtot)
+    base = rand(rng)
+    newinds = searchsortedfirst.(Ref(probability), (base .+ collect(1:nconf) / nconf) .% 1.0)
+
+    new_walkers = walkers[newinds]
+
+    for w in new_walkers
+        w.walker.weight = global_weight
+    end
+
+    walkers .= [deepcopy(w) for w in new_walkers]
+end
+
 function optimal_stochastic_reconfiguration!(walkers, rng::AbstractRNG)
     weights = map(w -> w.walker.weight, walkers)
     global_weight = mean(weights)
