@@ -71,11 +71,11 @@ def compute_forces(fpath):
     sderiv_sum = data["grad s"][()][1:]        
     sderiv_sum_warp = data["grad s (warp)"][()][1:]        
 
-    sderiv_sum_nocutoff = data["grad s (no cutoff)"][()][1:]        
-    sderiv_sum_warp_nocutoff = data["grad s (warp, no cutoff)"][()][1:]        
+    sderiv_sum_pq = data["grad s (p/q)"][()][1:]        
+    sderiv_sum_warp_pq = data["grad s (warp, p/q)"][()][1:]        
 
-    tderiv_sum_nocutoff = data["grad t (no cutoff)"][()][1:]        
-    tderiv_sum_warp_nocutoff = data["grad t (warp, no cutoff)"][()][1:]
+    tderiv_sum_pq = data["grad t (p/q)"][()][1:]        
+    tderiv_sum_warp_pq = data["grad t (warp, p/q)"][()][1:]
 
     tderiv_sum = data["grad t"][()][1:]
     tderiv_sum_warp = data["grad t (warp)"][()][1:]        
@@ -88,11 +88,11 @@ def compute_forces(fpath):
     el_times_sderiv_sum = data["Local energy * grad s"][()][1:] 
     el_times_sderiv_sum_warp = data["Local energy * grad s (warp)"][()][1:]       
 
-    el_times_sderiv_sum_nocutoff = data["Local energy * grad s (no cutoff)"][()][1:] 
-    el_times_sderiv_sum_warp_nocutoff = data["Local energy * grad s (warp, no cutoff)"][()][1:]       
+    el_times_sderiv_sum_pq = data["Local energy * grad s (p/q)"][()][1:] 
+    el_times_sderiv_sum_warp_pq = data["Local energy * grad s (warp, p/q)"][()][1:]       
 
-    el_times_tderiv_sum_nocutoff = data["Local energy * grad t (no cutoff)"][()][1:]        
-    el_times_tderiv_sum_warp_nocutoff = data["Local energy * grad t (warp, no cutoff)"][()][1:]        
+    el_times_tderiv_sum_pq = data["Local energy * grad t (p/q)"][()][1:]        
+    el_times_tderiv_sum_warp_pq = data["Local energy * grad t (warp, p/q)"][()][1:]        
 
     el_times_tderiv_sum = data["Local energy * grad t"][()][1:]        
     el_times_tderiv_sum_warp = data["Local energy * grad t (warp)"][()][1:]        
@@ -129,14 +129,14 @@ def compute_forces(fpath):
             )
 
 
-    force_pulay_exact_nocutoff = -(
-                el_times_tderiv_sum_nocutoff - energy*tderiv_sum_nocutoff \
-            +   el_times_sderiv_sum_nocutoff - energy*sderiv_sum_nocutoff \
+    force_pulay_exact_pq = -(
+                el_times_tderiv_sum_pq - energy*tderiv_sum_pq \
+            +   el_times_sderiv_sum_pq - energy*sderiv_sum_pq \
             )
 
-    force_pulay_exact_warp_nocutoff = -(
-                el_times_tderiv_sum_warp_nocutoff - energy*tderiv_sum_warp_nocutoff \
-            +   el_times_sderiv_sum_warp_nocutoff - energy*sderiv_sum_warp_nocutoff \
+    force_pulay_exact_warp_pq = -(
+                el_times_tderiv_sum_warp_pq - energy*tderiv_sum_warp_pq \
+            +   el_times_sderiv_sum_warp_pq - energy*sderiv_sum_warp_pq \
             +   el_times_jderiv_sum - energy*jderiv_sum \
             )
 
@@ -159,15 +159,15 @@ def compute_forces(fpath):
            force_pulay_exact_warp.flatten(), \
            force_pulay_vd.flatten(), \
            force_pulay_vd_warp.flatten(), \
-           force_pulay_exact_nocutoff.flatten(), \
-           force_pulay_exact_warp_nocutoff.flatten(), \
+           force_pulay_exact_pq.flatten(), \
+           force_pulay_exact_warp_pq.flatten(), \
            weights.flatten()
 
 
 force_hf, force_hf_warp, \
         force_pulay_exact, force_pulay_exact_warp, \
         force_pulay_vd, force_pulay_vd_warp, \
-        force_pulay_exact_nocutoff, force_pulay_exact_warp_nocutoff, \
+        force_pulay_exact_pq, force_pulay_exact_warp_pq, \
         weights \
     = compute_forces(sys.argv[1])
 
@@ -186,11 +186,11 @@ fpulay_vd_err = error(force_pulay_vd, weights=weights)
 fpulay_exact_warp = np.average(force_pulay_exact_warp, weights=weights)
 fpulay_exact_err_warp = error(force_pulay_exact_warp, weights=weights)
 
-fpulay_exact_nocutoff = np.average(force_pulay_exact_nocutoff, weights=weights)
-fpulay_exact_nocutoff_err = error(force_pulay_exact_nocutoff, weights=weights)
+fpulay_exact_pq = np.average(force_pulay_exact_pq, weights=weights)
+fpulay_exact_pq_err = error(force_pulay_exact_pq, weights=weights)
 
-fpulay_exact_nocutoff_warp = np.average(force_pulay_exact_warp_nocutoff, weights=weights)
-fpulay_exact_nocutoff_err_warp = error(force_pulay_exact_warp_nocutoff, weights=weights)
+fpulay_exact_pq_warp = np.average(force_pulay_exact_warp_pq, weights=weights)
+fpulay_exact_pq_err_warp = error(force_pulay_exact_warp_pq, weights=weights)
 
 fpulay_vd_warp = np.average(force_pulay_vd_warp, weights=weights)
 fpulay_vd_err_warp = error(force_pulay_vd_warp, weights=weights)
@@ -210,11 +210,11 @@ ftot_vd_err_warp = error(force_hf_warp + force_pulay_vd_warp, weights=weights)
 ftot_mm = np.average(force_hf_warp + force_pulay_exact, weights=weights)
 ftot_mm_err = error(force_hf_warp + force_pulay_exact, weights=weights)
 
-ftot_exact_nocutoff = np.average(force_hf + force_pulay_exact_nocutoff, weights=weights)
-ftot_exact_nocutoff_err = error(force_hf + force_pulay_exact_nocutoff, weights=weights)
+ftot_exact_pq = np.average(force_hf + force_pulay_exact_pq, weights=weights)
+ftot_exact_pq_err = error(force_hf + force_pulay_exact_pq, weights=weights)
 
-ftot_exact_nocutoff_warp = np.average(force_hf_warp + force_pulay_exact_warp_nocutoff, weights=weights)
-ftot_exact_nocutoff_err_warp = error(force_hf_warp + force_pulay_exact_warp_nocutoff, weights=weights)
+ftot_exact_pq_warp = np.average(force_hf_warp + force_pulay_exact_warp_pq, weights=weights)
+ftot_exact_pq_err_warp = error(force_hf_warp + force_pulay_exact_warp_pq, weights=weights)
 
 print(f"HF force:                        {fhf:.5f} +/- {fhf_err:.5f}")
 print(f"HF force (warp):                 {fhf_warp:.5f} +/- {fhf_err_warp:.5f}")
@@ -222,16 +222,16 @@ print(f"\n")
 print(f"Pulay force (exact):             {fpulay_exact:.5f} +/- {fpulay_exact_err:.5f}")
 print(f"Pulay force (exact, warp):       {fpulay_exact_warp:.5f} +/- {fpulay_exact_err_warp:.5f}")
 print(f"\n")
-print(f"Pulay force (exact, nc):         {fpulay_exact_nocutoff:.5f} +/- {fpulay_exact_nocutoff_err:.5f}")
-print(f"Pulay force (exact, warp, nc):   {fpulay_exact_nocutoff_warp:.5f} +/- {fpulay_exact_nocutoff_err_warp:.5f}")
+print(f"Pulay force (exact, p/q):         {fpulay_exact_pq:.5f} +/- {fpulay_exact_pq_err:.5f}")
+print(f"Pulay force (exact, warp, p/q):   {fpulay_exact_pq_warp:.5f} +/- {fpulay_exact_pq_err_warp:.5f}")
 print(f"\n")
 print(f"Pulay force (vd):                {fpulay_vd:.5f} +/- {fpulay_vd_err:.5f}")
 print(f"Pulay force (vd, warp):          {fpulay_vd_warp:.5f} +/- {fpulay_vd_err_warp:.5f}")
 print(f"\n")
 print(f"Total force (exact):             {ftot_exact:.5f} +/- {ftot_exact_err:.5f}")
 print(f"Total force (exact, warp):       {ftot_exact_warp:.5f} +/- {ftot_exact_err_warp:.5f}")
-print(f"Total force (exact, nc):         {ftot_exact_nocutoff:.5f} +/- {ftot_exact_nocutoff_err:.5f}")
-print(f"Total force (exact, warp, nc):   {ftot_exact_nocutoff_warp:.5f} +/- {ftot_exact_nocutoff_err_warp:.5f}")
+print(f"Total force (exact, p/q):         {ftot_exact_pq:.5f} +/- {ftot_exact_pq_err:.5f}")
+print(f"Total force (exact, warp, p/q):   {ftot_exact_pq_warp:.5f} +/- {ftot_exact_pq_err_warp:.5f}")
 print(f"Total force (vd):                {ftot_vd:.5f} +/- {ftot_vd_err:.5f}")
 print(f"Total force (vd, warp):          {ftot_vd_warp:.5f} +/- {ftot_vd_err_warp:.5f}")
 print(f"Total force (mix-match)          {ftot_mm:.5f} +/- {ftot_mm_err:.5f}")
@@ -248,9 +248,9 @@ fig.suptitle("VD force")
 fig, _ = plot_error_over_time(force_hf, force_pulay_vd, force_hf_warp, force_pulay_vd_warp, npoints, weights=weights)
 fig.suptitle("VD force")
 
-fig, _ = plot_force_data_trace(force_hf, force_pulay_exact_nocutoff, force_hf_warp, force_pulay_exact_warp_nocutoff)
-fig.suptitle("Exact force, no cutoff")
-fig, _ = plot_error_over_time(force_hf, force_pulay_exact_nocutoff, force_hf_warp, force_pulay_exact_warp_nocutoff, npoints, weights=weights)
-fig.suptitle("Exact force, no cutoff")
+fig, _ = plot_force_data_trace(force_hf, force_pulay_exact_pq, force_hf_warp, force_pulay_exact_warp_pq)
+fig.suptitle("Exact force, p/q")
+fig, _ = plot_error_over_time(force_hf, force_pulay_exact_pq, force_hf_warp, force_pulay_exact_warp_pq, npoints, weights=weights)
+fig.suptitle("Exact force, p/q")
 
 plt.show()

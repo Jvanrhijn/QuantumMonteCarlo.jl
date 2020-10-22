@@ -132,10 +132,9 @@ function grads_warp(fwalker, model, eref, x′, ψt′, τ)
 
 end
 
-function gradt(fwalker, model, eref, x′, ψt′, τ)
+function gradt(fwalker, model, eref, x′, ψt′, τ, usepq)
 
     x = fwalker.walker.configuration_old
-    x′ = fwalker.walker.configuration
 
     ψ = model.wave_function
 
@@ -154,8 +153,12 @@ function gradt(fwalker, model, eref, x′, ψt′, τ)
     qs(r′, r) = 1 - ps(r′, r)
 
     if ψnew != 0.0
-        deriv = (log(abs(ps(x′, x) * ts(x′, x) + qs(x′, x))) - log(abs(p(x′, x) * t(x′, x) + q(x′, x)))) / da
-        #deriv = (log(abs(ts(x′, x))) - log(abs(t(x′, x)))) / da
+        if usepq
+            deriv = (log(abs(ps(x′, x) * ts(x′, x) + qs(x′, x))) - log(abs(p(x′, x) * t(x′, x) + q(x′, x)))) / da
+        else
+            x′ = fwalker.walker.configuration
+            deriv = (log(abs(ts(x′, x))) - log(abs(t(x′, x)))) / da
+        end
         #deriv = (ps(x′, x) * log(abs(ts(x′, x))) - p(x′, x) * log(abs(t(x′, x)))) / da
         #deriv = (ps(x′, x) * log(abs(ts(x′, x))) - p(x′, x) * log(abs(t(x′, x))) + qs(x′, x) * log(abs(ts(x, x))) - q(x′, x) * log(abs(t(x, x)))) / da
     else
@@ -167,10 +170,9 @@ function gradt(fwalker, model, eref, x′, ψt′, τ)
   
 end
 
-function gradt_warp(fwalker, model, eref, x′, ψt′, τ)
+function gradt_warp(fwalker, model, eref, x′, ψt′, τ, usepq)
     walker = fwalker.walker
     x = walker.configuration_old
-    x′ = fwalker.walker.configuration
 
     ψ = model.wave_function
     ψnew = ψ.value(x′)
@@ -194,8 +196,13 @@ function gradt_warp(fwalker, model, eref, x′, ψt′, τ)
     x̅′, _ = node_warp(x′, ψ.value(x′), ψ.gradient(x′), ψt′.value(x′), ψt′.gradient(x′), τ)
 
     if ψnew != 0.0
-        deriv = (log(abs(ps(x̅′, x̅) * ts(x̅′, x̅) + qs(x̅′, x̅))) - log(abs(p(x′, x) * t(x′, x) + q(x′, x)))) / da
-        #deriv = (log(abs(ts(x̅′, x̅))) - log(abs(t(x′, x)))) / da
+        if usepq
+            deriv = (log(abs(ps(x̅′, x̅) * ts(x̅′, x̅) + qs(x̅′, x̅))) - log(abs(p(x′, x) * t(x′, x) + q(x′, x)))) / da
+        else
+            x′ = fwalker.walker.configuration
+            x̅′, _ = node_warp(x′, ψ.value(x′), ψ.gradient(x′), ψt′.value(x′), ψt′.gradient(x′), τ)
+            deriv = (log(abs(ts(x̅′, x̅))) - log(abs(t(x′, x)))) / da
+        end
     else
         deriv = (log(abs(ts(x̅, x̅))) - log(abs(t(x, x)))) / da
     end

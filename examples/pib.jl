@@ -20,9 +20,9 @@ hamiltonian_recompute′(ψ, x) = -0.5*ψ.laplacian(x)
 include("forceutil.jl")
 
 # DMC settings
-τ = 0.1e-1
+τ = 0.1e-2
 nwalkers = 10
-num_blocks = 1000
+num_blocks = 100
 steps_per_block = trunc(Int64, 1/τ)
 neq = 10
 lag = trunc(Int64, steps_per_block)
@@ -65,14 +65,14 @@ observables = OrderedDict(
     "grad log psi" => (fwalker, model, eref, xp) -> grad_logpsi(fwalker, model, eref, xp, ψtrial′),
     "grad log psi (warp)" => (fwalker, model, eref, xp) -> grad_logpsi_warp(fwalker, model, eref, xp, ψtrial′, τ),
     "grad s" => (fwalker, model, eref, xp) -> grads(fwalker, model, eref, xp, ψtrial′, τ),
-    "grad t" => (fwalker, model, eref, xp) -> gradt(fwalker, model, eref, xp, ψtrial′, τ),
+    "grad t" => (fwalker, model, eref, xp) -> gradt(fwalker, model, eref, xp, ψtrial′, τ, false),
     "grad s (warp)" => (fwalker, model, eref, xp) -> grads_warp(fwalker, model, eref, xp, ψtrial′, τ),
-    "grad t (warp)" => (fwalker, model, eref, xp) -> gradt_warp(fwalker, model, eref, xp, ψtrial′, τ),
+    "grad t (warp)" => (fwalker, model, eref, xp) -> gradt_warp(fwalker, model, eref, xp, ψtrial′, τ, false),
     #These are placeholders, need to collect cutoff-ed versions as well
-    "grad s (no cutoff)" => (fwalker, model, eref, xp) -> grads(fwalker, model, eref, xp, ψtrial′, τ),
-    "grad t (no cutoff)" => (fwalker, model, eref, xp) -> gradt(fwalker, model, eref, xp, ψtrial′, τ),
-    "grad s (warp, no cutoff)" => (fwalker, model, eref, xp) -> grads_warp(fwalker, model, eref, xp, ψtrial′, τ),
-    "grad t (warp, no cutoff)" => (fwalker, model, eref, xp) -> gradt_warp(fwalker, model, eref, xp, ψtrial′, τ),
+    "grad s (p/q)" => (fwalker, model, eref, xp) -> grads(fwalker, model, eref, xp, ψtrial′, τ),
+    "grad t (p/q)" => (fwalker, model, eref, xp) -> gradt(fwalker, model, eref, xp, ψtrial′, τ, true),
+    "grad s (warp, p/q)" => (fwalker, model, eref, xp) -> grads_warp(fwalker, model, eref, xp, ψtrial′, τ),
+    "grad t (warp, p/q)" => (fwalker, model, eref, xp) -> gradt_warp(fwalker, model, eref, xp, ψtrial′, τ, true),
     "grad log j" => (fwalker, model, eref, xp) -> gradj(fwalker, model, eref, xp, ψtrial′, τ),
     "sum grad log j" => (fwalker, model, eref, xp) -> gradj(fwalker, model, eref, xp, ψtrial′, τ),
 )
@@ -82,7 +82,6 @@ rng = MersenneTwister(160224267)
 # create "Fat" walkers
 walkers = QuantumMonteCarlo.generate_walkers(nwalkers, ψtrial, rng, Uniform(-a, a), 1)
 
-
 fat_walkers = [QuantumMonteCarlo.FatWalker(
     walker, 
     observables, 
@@ -91,10 +90,10 @@ fat_walkers = [QuantumMonteCarlo.FatWalker(
         "grad t" => CircularBuffer(lag),
         "grad s (warp)" => CircularBuffer(lag),
         "grad t (warp)" => CircularBuffer(lag),
-        "grad s (no cutoff)" => CircularBuffer(lag),
-        "grad t (no cutoff)" => CircularBuffer(lag),
-        "grad s (warp, no cutoff)" => CircularBuffer(lag),
-        "grad t (warp, no cutoff)" => CircularBuffer(lag),
+        "grad s (p/q)" => CircularBuffer(lag),
+        "grad t (p/q)" => CircularBuffer(lag),
+        "grad s (warp, p/q)" => CircularBuffer(lag),
+        "grad t (warp, p/q)" => CircularBuffer(lag),
         "sum grad log j" => CircularBuffer(lag),
     ),
     [
@@ -104,10 +103,10 @@ fat_walkers = [QuantumMonteCarlo.FatWalker(
         ("Local energy", "grad t"),
         ("Local energy", "grad s (warp)"),
         ("Local energy", "grad t (warp)"),
-        ("Local energy", "grad s (no cutoff)"),
-        ("Local energy", "grad t (no cutoff)"),
-        ("Local energy", "grad s (warp, no cutoff)"),
-        ("Local energy", "grad t (warp, no cutoff)"),
+        ("Local energy", "grad s (p/q)"),
+        ("Local energy", "grad t (p/q)"),
+        ("Local energy", "grad s (warp, p/q)"),
+        ("Local energy", "grad t (warp, p/q)"),
         ("Local energy", "grad log j"),
         ("Local energy", "sum grad log j"),
     ]
