@@ -28,7 +28,7 @@ function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng
     end
 
     if verbosity == :progressbar
-        p = Progress(num_blocks + neq)
+        progress = Progress(num_blocks + neq)
     end
 
     start_time = now()
@@ -140,7 +140,7 @@ function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng
         end
 
         if verbosity == :progressbar
-            ProgressMeter.next!(p)
+            ProgressMeter.next!(progress)
         elseif verbosity == :loud
             if j > neq
                 energy = energy_estimate[j-neq+1]
