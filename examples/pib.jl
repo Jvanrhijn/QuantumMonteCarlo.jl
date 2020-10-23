@@ -20,20 +20,22 @@ hamiltonian_recompute′(ψ, x) = -0.5*ψ.laplacian(x)
 include("forceutil.jl")
 
 # DMC settings
-τ = 1e-3
+τ = 0.25e-2
 nwalkers = 10
-num_blocks = 1000
+num_blocks = 500
 steps_per_block = trunc(Int64, 1/τ)
 neq = 10
 lag = trunc(Int64, steps_per_block)
 eref = 5.0/(2a)^2
 
 # Trial wave function
-function ψpib(x::Array{Float64})
+#function ψpib(x::Array{Float64})
+function ψpib(x::AbstractArray)
     max(0, a^2 - x[1]^2)
 end
 
-function ψpib′(x::Array{Float64})
+#function ψpib′(x::Array{Float64})
+function ψpib′(x::AbstractArray)
     a′ = a + da
     max(0, (a′)^2 - x[1]^2)
 end
