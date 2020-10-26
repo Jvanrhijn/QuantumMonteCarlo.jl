@@ -15,7 +15,12 @@ function move_walker!(walker, τ, ψ, rng::AbstractRNG)
     # Move walker to x′ according to Langevin Itô diffusion
     # expression taken from https://en.wikipedia.org/wiki/Metropolis-adjusted_Langevin_algorithm
     # with π(x) = ψ(x)², so ∇log(π) = 2∇log(ψ) = 2∇ψ/ψ.
-    x′ = x .+ v*τ .+ sqrt(τ) * randn(rng, Float64, size(x))
+    d = abs(ψval) / norm(∇ψ)
+    Δx = v*τ + √τ * randn(rng, Float64, size(x))
+    #x′ = x + d * tanh.(Δx / d)
+    x′ = x + Δx
+
+    #x′ = x .+ v*τ .+ sqrt(τ) * randn(rng, Float64, size(x))
 
     # Update the walker with this new configuration
     walker.configuration_old .= deepcopy(x)

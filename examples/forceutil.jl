@@ -36,7 +36,7 @@ function node_warp_exact_jacobian(x, ψ, ψ′)
     n′(y) = ψ′.gradient(y) / norm(ψ′.gradient(y))
     u = cutoff_tanh ∘ d
 
-    warp(y) = y + (d(y) - d′(y)) * n′(y) * sign(ψ′.value(y)) * u(y)[1]
+    warp(y::AbstractVector) = y + (d(y) - d′(y)) * n′(y) * sign(ψ′.value(y)) * u(y)[1]
 
     x̅ = warp(x)
 
@@ -116,6 +116,8 @@ function gradt(fwalker, model, eref, x′, ψt′, τ; usepq=false, warp=false)
     walker = fwalker.walker
     x = walker.configuration_old
 
+    accepted = x′ == fwalker.walker.configuration
+
     if !usepq
         x′ = walker.configuration
     end
@@ -149,16 +151,16 @@ function gradt(fwalker, model, eref, x′, ψt′, τ; usepq=false, warp=false)
 
     # if the attempted move was to a disallowed region,
     # use T(x, x) = exp(-(V(x)τ)²/2τ)
+    if ψnew == 0.0 && ψnew′ != 0.0
+        return (log(abs(qs(x̅′, x̅))) - log(1)) / da
+    end
     if ψnew == 0.0
         return (log(abs(ts(x̅, x̅))) - log(abs(t(x, x)))) / da
-
     end
 
-    accepted = x == fwalker.walker.configuration
-    rejected = !accepted
-
-    if usepq && rejected
-        deriv = (log(abs(ps(x̅′, x̅) * ts(x̅′, x̅) + qs(x̅′, x̅))) - log(abs(p(x′, x) * t(x′, x) + q(x′, x)))) / da
+    if usepq && !accepted
+        #deriv = (log(abs(ps(x̅′, x̅) * ts(x̅′, x̅) + qs(x̅′, x̅))) - log(abs(p(x′, x) * t(x′, x) + q(x′, x)))) / da
+        deriv = (ps(x̅′, x̅)*log(ts(x̅′, x̅)) + qs(x̅′, x̅)*log(ts(x̅, x̅)) - (p(x′, x)*log(t(x′, x)) + q(x′, x)*log(t(x, x)))) / da
     else
         deriv = (log(abs(ts(x̅′, x̅))) - log(abs(t(x′, x)))) / da
     end

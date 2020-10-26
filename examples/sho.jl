@@ -4,12 +4,13 @@ using Random
 using LinearAlgebra
 using HDF5
 using StatsBase
+using ForwardDiff
 
 using QuantumMonteCarlo
 
 # Force computation settings and import
-#a = 0.378
-a = 1
+β = 0.378
+a = 1.0
 da = 1e-5
 a′ = a + da
 
@@ -24,40 +25,40 @@ include("forceutil.jl")
 # DMC settings
 τ = 1e-2
 nwalkers = 10
-num_blocks = 400
+num_blocks = 800
 steps_per_block = trunc(Int64, 1/τ)
 neq = 10
 lag = trunc(Int64, 10*steps_per_block)
-#eref = 0.1 * (7a^2 + 1) / a
+eref = 0.1 * (7β^2 + 1) / β
 #fref = 0.1 * (7 - 1/a^2)
-eref = 0.625
+#eref = 0.625
 
 # Trial wave function
-function ψsho(x::Array{Float64})
-    exp(- a * norm(x)^2 / 4)
-    #1 / (1 + a*norm(x)^2)^2
+function ψsho(x::AbstractArray)
+    #exp(- a * norm(x)^2 / 4)
+    1 / (1 + β*a*norm(x)^2)^2
 end
 
-function ψsho′(x::Array{Float64})
+function ψsho′(x::AbstractArray)
     a′ = a + da
-    exp(- a′ * norm(x)^2 / 4)
-    #1 / (1 + a′*norm(x)^2)^2
+    #exp(- a′ * norm(x)^2 / 4)
+    1 / (1 + β*a′*norm(x)^2)^2
 end
 
 ψtrial = WaveFunction(
     ψsho,
-    #x -> -2a*x*ψsho(x),
-    #x -> ((-2*a*x[1])^2 - 2*a)*ψsho(x),
-    x -> QuantumMonteCarlo.gradient_fd(ψsho, x),
-    x -> QuantumMonteCarlo.laplacian_fd(ψsho, x),
+    #x -> -2a*x*ψsho(x) / 4,
+    #x -> ((-2*a*x[1] / 4)^2 - 2*a / 4)*ψsho(x),
+    x -> -4*β*a*x / (β*a*norm(x)^2 + 1)^3,
+    x -> 24(β*a)^2*norm(x)^2  / ((β*a)*norm(x)^2 + 1)^4 - 4a*β / (a*β*norm(x)^2 + 1)^3,
 )
 
 ψtrial′ = WaveFunction(
     ψsho′,
-    #x -> -2(a + da)*x*ψsho′(x),
-    #x -> ((-2*(a + da)*x[1])^2 - 2*(a + da))*ψsho′(x),
-    x -> QuantumMonteCarlo.gradient_fd(ψsho′, x),
-    x -> QuantumMonteCarlo.laplacian_fd(ψsho′, x),
+    #x -> -2(a + da)*x*ψsho′(x) / 4,
+    #x -> ((-2*(a + da)*x[1] / 4)^2 - 2*(a + da) / 4)*ψsho′(x),
+    x -> -4β*(a + da)*x / (β*(a + da)*norm(x)^2 + 1)^3,
+    x -> 24β^2*(a + da)^2*norm(x)^2  / (β*(a + da)*norm(x)^2 + 1)^4 - 4β*(a + da) / (β*(a + da)*norm(x)^2 + 1)^3,
 )
 
 model = Model(

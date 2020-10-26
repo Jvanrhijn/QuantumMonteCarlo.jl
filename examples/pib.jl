@@ -8,7 +8,7 @@ using StatsBase
 using QuantumMonteCarlo
 
 # Force computation settings and import
-a = 1
+a = 1.0
 da = 1e-5
 
 # Setting up the hamiltonian
@@ -22,7 +22,7 @@ include("forceutil.jl")
 # DMC settings
 τ = 0.25e-2
 nwalkers = 10
-num_blocks = 500
+num_blocks = 1000
 steps_per_block = trunc(Int64, 1/τ)
 neq = 10
 lag = trunc(Int64, steps_per_block)
@@ -84,7 +84,7 @@ observables = OrderedDict(
     "sum grad log j" => (fwalker, model, eref, xp) -> gradj(fwalker, model, eref, xp, ψtrial′, τ),
 )
 
-rng = MersenneTwister(160224267)
+rng = MersenneTwister(16224267)
 
 # create "Fat" walkers
 walkers = QuantumMonteCarlo.generate_walkers(nwalkers, ψtrial, rng, Uniform(-a, a), 1)

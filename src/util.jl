@@ -1,4 +1,4 @@
-function gradient_fd(f, x; dx=1e-5)
+function gradient_fd(f, x::AbstractVector; dx=1e-5)
     dim = length(x)
     out = zeros(dim)
     for i = 1:dim
@@ -9,7 +9,7 @@ function gradient_fd(f, x; dx=1e-5)
     out
 end
 
-function laplacian_fd(f, x; dx=1e-5)
+function laplacian_fd(f, x::AbstractVector; dx=1e-5)
     dim = length(x)
     out = 0.0
     val = f(x)
