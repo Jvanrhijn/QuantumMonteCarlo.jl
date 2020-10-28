@@ -69,13 +69,15 @@ function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng
 
                 local_energy_ensemble[i] = el′
                 weight_ensemble[i] = walker.weight
+                #weight_ensemble[i] = 1.0
 
                 # update FatWalker with observables computed at latest
                 # configuration
                 # pass in also x′ (i.e. the proposed move), which may or
                 # may not be equal to x_new
                 if j > neq
-                    accumulate_observables!(fwalker, model, eref, x′)
+                    #accumulate_observables!(fwalker, model, eref, x′)
+                    accumulate_observables!(fwalker, model, energy_estimate[j-neq+1], x′)
                 end
 
             end
@@ -116,7 +118,8 @@ function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng
 
         if j <= neq
             #eref = 0.5 * (eref + block_energy)
-            eref = block_energy - log(block_weight)
+            #eref = block_energy - log(block_weight)
+            eref -= log(block_weight)
             #eref = eref - log(block_weight[b])/τ
         end
 

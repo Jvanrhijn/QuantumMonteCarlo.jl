@@ -20,9 +20,9 @@ hamiltonian_recompute′(ψ, x) = -0.5*ψ.laplacian(x)
 include("forceutil.jl")
 
 # DMC settings
-τ = 0.25e-2
+τ = 0.1e-2
 nwalkers = 10
-num_blocks = 1000
+num_blocks = 700
 steps_per_block = trunc(Int64, 1/τ)
 neq = 10
 lag = trunc(Int64, steps_per_block)
@@ -31,25 +31,25 @@ eref = 5.0/(2a)^2
 # Trial wave function
 #function ψpib(x::Array{Float64})
 function ψpib(x::AbstractArray)
-    max(0, a^2 - x[1]^2)
+    a^2 - x[1]^2
 end
 
 #function ψpib′(x::Array{Float64})
 function ψpib′(x::AbstractArray)
     a′ = a + da
-    max(0, (a′)^2 - x[1]^2)
+    (a′)^2 - x[1]^2
 end
 
 ψtrial = WaveFunction(
     ψpib,
-    x -> abs(x[1]) > a ? zeros(size(x)) : -2x,
-    x -> abs(x[1]) > a ? 0.0 : -2
+    x -> -2x,
+    x -> -2
 )
 
 ψtrial′ = WaveFunction(
     ψpib′,
-    x -> abs(x[1]) > a + da ? zeros(size(x)) : -2x,
-    x -> abs(x[1]) > a + da ? 0.0 : -2
+    x -> -2x,
+    x -> -2
 )
 
 model = Model(
@@ -80,7 +80,7 @@ observables = OrderedDict(
     "grad s (warp, p/q)" => (fwalker, model, eref, xp) -> grads(fwalker, model, eref, xp, ψtrial′, τ; warp=true),
     "grad t (warp, p/q)" => (fwalker, model, eref, xp) -> gradt(fwalker, model, eref, xp, ψtrial′, τ; usepq=true, warp=true),
     # Jacobians
-    "grad log j" => (fwalker, model, eref, xp) -> gradj(fwalker, model, eref, xp, ψtrial′, τ),
+    "grad log j" => (fwalker, model, eref, xp) -> gradj_last(fwalker, model, eref, xp, ψtrial′, τ),
     "sum grad log j" => (fwalker, model, eref, xp) -> gradj(fwalker, model, eref, xp, ψtrial′, τ),
 )
 
@@ -133,6 +133,8 @@ energies, errors = QuantumMonteCarlo.run_dmc!(
     rng=rng, 
     neq=neq, 
     brancher=stochastic_reconfiguration_pyqmc!,
+    #brancher=stochastic_reconfiguration!,
+    #brancher=no_brancher!,
     outfile="pib.hdf5", #ARGS[1],
     verbosity=:loud,
     branchtime=steps_per_block ÷ 10,

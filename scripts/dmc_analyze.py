@@ -119,25 +119,27 @@ def compute_forces(fpath):
     # Pulay force
     force_pulay_exact = -(
                 el_times_tderiv_sum - energy*tderiv_sum \
-            +   el_times_sderiv_sum - energy*sderiv_sum \
+            +   0*(el_times_sderiv_sum - energy*sderiv_sum) \
             )
 
     force_pulay_exact_warp = -(
                 el_times_tderiv_sum_warp - energy*tderiv_sum_warp \
-            +   el_times_sderiv_sum_warp - energy*sderiv_sum_warp \
+            +   0*(el_times_sderiv_sum_warp - energy*sderiv_sum_warp) \
             +   (el_times_jderiv_sum - energy*jderiv_sum) \
+                + (el_times_jac_logderiv - energy*jac_logderiv) \
             )
 
 
     force_pulay_exact_pq = -(
                 el_times_tderiv_sum_pq - energy*tderiv_sum_pq \
-            +   el_times_sderiv_sum_pq - energy*sderiv_sum_pq \
+            +   0*(el_times_sderiv_sum_pq - energy*sderiv_sum_pq) \
             )
 
     force_pulay_exact_warp_pq = -(
                 el_times_tderiv_sum_warp_pq - energy*tderiv_sum_warp_pq \
-            +   el_times_sderiv_sum_warp_pq - energy*sderiv_sum_warp_pq \
+            +   0*(el_times_sderiv_sum_warp_pq - energy*sderiv_sum_warp_pq) \
             +   el_times_jderiv_sum - energy*jderiv_sum \
+                + (el_times_jac_logderiv - energy*jac_logderiv) \
             )
 
     force_pulay_vd = -(
@@ -148,7 +150,7 @@ def compute_forces(fpath):
     force_pulay_vd_warp = -(
             2 * (el_times_psilogderiv_warp - energy*psilogderiv_warp) \
             +    el_times_sderiv_sum_warp - energy*sderiv_sum_warp \
-            +    el_times_jac_logderiv - energy * jac_logderiv \
+            +    el_times_jac_logderiv - energy*jac_logderiv \
             )
 
     data.close()

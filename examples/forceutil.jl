@@ -127,7 +127,7 @@ function gradt(fwalker, model, eref, x′, ψt′, τ; usepq=false, warp=false)
     ψnew′ = ψt′.value(x′)
 
     el(r) = model.hamiltonian_recompute(ψ, r) / ψ.value(r)
-    els(r) = hamiltanian_recompute′(ψt′, r) / ψt′.value(r)
+    els(r) = hamiltonian_recompute′(ψt′, r) / ψt′.value(r)
 
     v(r) = ψ.gradient(r) / ψ.value(r)
     vs(r) = ψt′.gradient(r) / ψt′.value(r)
@@ -135,9 +135,15 @@ function gradt(fwalker, model, eref, x′, ψt′, τ; usepq=false, warp=false)
     t(r′, r) = exp(-norm(r′ - r - v(r)*τ)^2 / 2τ)
     ts(r′, r) = exp(-norm(r′ - r - vs(r)*τ)^2 / 2τ)
 
-    p(r′, r) = min(1, (ψ.value(r′) / ψ.value(r)) ^2 * t(r, r′) / t(r′, r))
+    s(r′, r) = eref - 0.5(el(r) + el(r′))
+    ss(r′, r) = eref - 0.5(els(r) + els(r′))
+
+    g(r′, r) = t(r′, r) * exp(τ * s(r′, r))
+    gs(r′, r) = ts(r′, r) * exp(τ * ss(r′, r))
+
+    p(r′, r) = min(1, (ψ.value(r′) / ψ.value(r))^2 * t(r, r′) / t(r′, r)) * Float64(sign(ψ.value(r′)) == sign(ψ.value(r)))
     q(r′, r) = 1 - p(r′, r)
-    ps(r′, r) = min(1, (ψt′.value(r′) / ψt′.value(r)) ^2 * ts(r, r′) / ts(r′, r))
+    ps(r′, r) = min(1, (ψt′.value(r′) / ψt′.value(r))^2 * ts(r, r′) / ts(r′, r)) * Float64(sign(ψt′.value(r)) == sign(ψt′.value(r′)))
     qs(r′, r) = 1 - ps(r′, r)
 
     # perform warp
@@ -149,20 +155,17 @@ function gradt(fwalker, model, eref, x′, ψt′, τ; usepq=false, warp=false)
         x̅′ = x′
     end
 
-    # if the attempted move was to a disallowed region,
-    # use T(x, x) = exp(-(V(x)τ)²/2τ)
-    if ψnew == 0.0 && ψnew′ != 0.0
-        return (log(abs(qs(x̅′, x̅))) - log(1)) / da
-    end
-    if ψnew == 0.0
-        return (log(abs(ts(x̅, x̅))) - log(abs(t(x, x)))) / da
-    end
-
     if usepq && !accepted
         #deriv = (log(abs(ps(x̅′, x̅) * ts(x̅′, x̅) + qs(x̅′, x̅))) - log(abs(p(x′, x) * t(x′, x) + q(x′, x)))) / da
-        deriv = (ps(x̅′, x̅)*log(ts(x̅′, x̅)) + qs(x̅′, x̅)*log(ts(x̅, x̅)) - (p(x′, x)*log(t(x′, x)) + q(x′, x)*log(t(x, x)))) / da
-    else
-        deriv = (log(abs(ts(x̅′, x̅))) - log(abs(t(x′, x)))) / da
+        #deriv = (ps(x̅′, x̅)*log(ts(x̅′, x̅)) + qs(x̅′, x̅)*log(ts(x̅, x̅)) - (p(x′, x)*log(t(x′, x)) + q(x′, x)*log(t(x, x)))) / da
+        #deriv = (log(ps(x̅′, x̅) * gs(x̅′, x̅) + qs(x̅′, x̅)) - log(p(x′, x) * g(x′, x) + q(x′, x))) / da
+        #deriv = (ps(x̅′, x̅) * (log(ts(x̅′, x̅)) + τ*ss(x̅′, x̅)) + qs(x̅′, x̅) - (p(x′, x) * (log(t(x′, x)) + s(x′, x) * τ) + q(x′, x))) / da
+        deriv = (log(ps(x̅′, x̅) * gs(x̅′, x̅) + qs(x̅′, x̅)) - log(p(x′, x) * g(x′, x) + q(x′, x))) / da
+    else 
+        deriv = (log(gs(x̅′, x̅)) - log(g(x′, x))) / da
+    #    #deriv = ((log(ts(x̅′, x̅)) + τ*ss(x̅′, x̅)) - log(t(x′, x)) - τ*s(x′, x)) / da
+   # else
+   #     deriv = 0
     end
 
     return deriv
@@ -170,6 +173,24 @@ function gradt(fwalker, model, eref, x′, ψt′, τ; usepq=false, warp=false)
 end
 
 function gradj(fwalker, model, eref, x′, ψt′,  τ)
+    walker = fwalker.walker
+
+    x = walker.configuration_old
+    #x = walker.configuration
+
+    ψ = model.wave_function.value(x)
+    ∇ψ = model.wave_function.gradient(x)
+
+    ψ′ = ψt′.value(x)
+    ∇ψ′ = ψt′.gradient(x)
+
+    #x̅, jac = node_warp(x, ψ, ∇ψ, ψ′, ∇ψ′, τ)
+    x̅, jac = node_warp_exact_jacobian(x, model.wave_function, ψt′)
+
+    return log(abs(jac)) / da
+end
+
+function gradj_last(fwalker, model, eref, x′, ψt′,  τ)
     walker = fwalker.walker
 
     #x = walker.configuration_old
@@ -185,7 +206,6 @@ function gradj(fwalker, model, eref, x′, ψt′,  τ)
     x̅, jac = node_warp_exact_jacobian(x, model.wave_function, ψt′)
 
     return log(abs(jac)) / da
-    #return (jac - 1) / da
 end
 
 function grad_logpsi(fwalker, model, eref, x′, ψt′)

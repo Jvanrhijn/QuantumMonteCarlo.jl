@@ -74,7 +74,6 @@ function simple_branching!(walkers, rng::AbstractRNG)
         walker = fwalker.walker
         if walker.weight > 1.0
             num_copies = trunc(Int64, walker.weight + rand(rng)) - 1
-            println(num_copies)
             if num_copies > max_copies
                 throw(DomainError("Too many walker copies made"))
             end
