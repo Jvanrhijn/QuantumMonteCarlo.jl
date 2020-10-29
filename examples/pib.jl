@@ -20,8 +20,8 @@ hamiltonian_recompute′(ψ, x) = -0.5*ψ.laplacian(x)
 include("forceutil.jl")
 
 # DMC setting
-τ = .1e-1
-nwalkers = 10
+τ = 1e-2
+nwalkers = 40
 num_blocks = 700
 steps_per_block = trunc(Int64, 1/τ)
 neq = 10
@@ -111,6 +111,7 @@ fat_walkers = [QuantumMonteCarlo.FatWalker(
         "sum grad log j" => CircularBuffer(lag),
         "grad log psi hist" => CircularBuffer(lag),
         "grad log psi hist (warp)" => CircularBuffer(lag),
+        #"pulay warp correction exact" => CircularBuffer(lag),
     ),
     [
         ("Local energy", "grad log psi"),

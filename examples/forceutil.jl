@@ -30,13 +30,12 @@ function node_warp(x, ψ, ∇ψ, ψ′, ∇ψ′, τ)
     x̅, jac
 end
 
-function node_warp_exact_jacobian(x, ψ, ψ′)
+function node_warp_exact_jacobian(x, ψ, ψ′, τ)
     d(y) = abs(ψ.value(y)) / norm(ψ.gradient(y))
     d′(y) = abs(ψ′.value(y)) / norm(ψ′.gradient(y))
     n′(y) = ψ′.gradient(y) / norm(ψ′.gradient(y))
-    u = cutoff_tanh ∘ d
 
-    warp(y::AbstractVector) = y + (d(y) - d′(y)) * n′(y) * sign(ψ′.value(y)) * u(y)[1]
+    warp(y::AbstractVector) = y + (d(y) - d′(y)) * n′(y) * sign(ψ′.value(y)) * cutoff_tanh(d(y), a=√τ)[1]
 
     x̅ = warp(x)
 
@@ -174,7 +173,13 @@ function gradt(fwalker, model, eref, x′, ψt′, τ; usepq=false, warp=false)
    #     deriv = 0
     elseif !warp
         #deriv = accepted ? (log(gs(x′, x)) - log(g(x′, x))) / da : 0.0
-        deriv = accepted ? (log(gs(x′, x)) - log(g(x′, x))) / da : (ss(x, x) - s(x, x)) / da * τ
+        #deriv = accepted ? (log(gs(x′, x)) - log(g(x′, x))) / da : (ss(x, x) - s(x, x)) / da * τ
+        ∇ₐv = (vs(x) - v(x)) / da
+        u = x′ - x - v(x)*τ
+        #∇t = dot(u, ∇ₐv)
+        ∇t = dot(u, ∇ₐv)
+        ∇s = (ss(x′, x) - s(x′, x)) / da * τ
+        deriv = accepted ? (log(gs(x′, x)) - log(g(x′, x))) / da : ∇s
     elseif warp
         ∂ₐlnG = (log(gs(x′, x)) - log(g(x′, x))) / da
         ∂ₐS = (ss(x′, x) - s(x′, x)) / da * τ
@@ -194,7 +199,8 @@ function pulay_force_warp_correction_exact(fwalker, model, eref, xp, ψt′, τ)
     x′ = fwalker.walker.configuration
 
     ψ = model.wave_function
-    x̅′, jac = node_warp(x′, ψ.value(x′), ψ.gradient(x′), ψt′.value(x′), ψt′.gradient(x′), τ)
+    x̅′, jac′ = node_warp(x′, ψ.value(x′), ψ.gradient(x′), ψt′.value(x′), ψt′.gradient(x′), τ)
+    x̅, jac = node_warp(x, ψ.value(x), ψ.gradient(x), ψt′.value(x), ψt′.gradient(x), τ)
 
     el(r) = model.hamiltonian_recompute(ψ, r) / ψ.value(r)
     els(r) = hamiltonian_recompute′(ψt′, r) / ψt′.value(r)
@@ -213,12 +219,16 @@ function pulay_force_warp_correction_exact(fwalker, model, eref, xp, ψt′, τ)
 
     dx = 1e-5
 
-    ∂ₓlnG = (log(g(x′ .+ dx, x)) - log(g(x′ .- dx, x))) / 2dx
-    ∂ₓS = (ss(x′ .+ dx, x) - s(x′ .- dx, x)) / 2dx * τ
+    ∂ₓlnG′ = (log(g(x′ .+ dx, x)) - log(g(x′ .- dx, x))) / 2dx
+    ∂ₓS′ = (ss(x′ .+ dx, x) - s(x′ .- dx, x)) / 2dx * τ
 
-    ∂ₐx̅ = (x̅′ - x′) / da
+    ∂ₓlnG = (log(g(x′, x .+ dx)) - log(g(x′, x .- dx))) / 2dx
+    ∂ₓS = (ss(x′, x .+ dx) - s(x′, x .- dx)) / 2dx * τ
 
-    return accepted ? ∂ₐx̅[1] * ∂ₓlnG : ∂ₐx̅[1] * ∂ₓS
+    ∂ₐx̅′ = (x̅′ - x′) / da
+    ∂ₐx̅ = (x̅ - x) / da
+
+    return accepted ? ∂ₐx̅′[1] * ∂ₓlnG′ : (∂ₐx̅′[1] * ∂ₓS′)
 
 end
 
@@ -235,7 +245,7 @@ function gradj(fwalker, model, eref, x′, ψt′,  τ)
     ∇ψ′ = ψt′.gradient(x)
 
     #x̅, jac = node_warp(x, ψ, ∇ψ, ψ′, ∇ψ′, τ)
-    x̅, jac = node_warp_exact_jacobian(x, model.wave_function, ψt′)
+    x̅, jac = node_warp_exact_jacobian(x, model.wave_function, ψt′, τ)
 
     return log(abs(jac)) / da
 end
@@ -253,7 +263,7 @@ function gradj_last(fwalker, model, eref, x′, ψt′,  τ)
     ∇ψ′ = ψt′.gradient(x)
 
     #x̅, jac = node_warp(x, ψ, ∇ψ, ψ′, ∇ψ′, τ)
-    x̅, jac = node_warp_exact_jacobian(x, model.wave_function, ψt′)
+    x̅, jac = node_warp_exact_jacobian(x, model.wave_function, ψt′, τ)
 
     return log(abs(jac)) / da
 end
