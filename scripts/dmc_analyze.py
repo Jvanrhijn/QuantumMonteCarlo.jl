@@ -65,7 +65,6 @@ def compute_forces(fpath):
 
     weights = data["Weight"][()][1:]
     energy = np.average(data["Local energy"][()][1:], weights=weights)
-    print(energy)
 
     # Get Green's function derivatives
     sderiv_sum = data["grad s"][()][1:]        
@@ -112,6 +111,16 @@ def compute_forces(fpath):
     el_times_psilogderiv = data["Local energy * grad log psi"][()][1:]
     el_times_psilogderiv_warp = data["Local energy * grad log psi (warp)"][()][1:]
 
+    # Get old psi derivative
+    psilogderiv_old = data["grad log psi old"][()][1:]
+    psilogderiv_old_warp = data["grad log psi old (warp)"][()][1:]
+    el_times_psilogderiv_old = data["Local energy * grad log psi old"][()][1:]
+    el_times_psilogderiv_old_warp = data["Local energy * grad log psi old (warp)"][()][1:]
+
+    # exact force pulay correction
+    pulay_warp_correction = data["pulay warp correction exact"][()][1:]
+    el_times_pulay_warp_correction = data["Local energy * pulay warp correction exact"][()][1:]
+
     # Hellmann-Feynman force
     force_hf = -local_e_deriv
     force_hf_warp = -local_e_deriv_warp
@@ -125,8 +134,9 @@ def compute_forces(fpath):
     force_pulay_exact_warp = -(
                 el_times_tderiv_sum_warp - energy*tderiv_sum_warp \
             +   0*(el_times_sderiv_sum_warp - energy*sderiv_sum_warp) \
-            +   (el_times_jderiv_sum - energy*jderiv_sum) \
+            +   0*(el_times_jderiv_sum - energy*jderiv_sum) \
                 + (el_times_jac_logderiv - energy*jac_logderiv) \
+            +    (el_times_pulay_warp_correction - energy*pulay_warp_correction) \
             )
 
 

@@ -19,8 +19,8 @@ hamiltonian_recompute′(ψ, x) = -0.5*ψ.laplacian(x)
 
 include("forceutil.jl")
 
-# DMC settings
-τ = 0.1e-2
+# DMC setting
+τ = .1e-1
 nwalkers = 10
 num_blocks = 700
 steps_per_block = trunc(Int64, 1/τ)
@@ -82,6 +82,13 @@ observables = OrderedDict(
     # Jacobians
     "grad log j" => (fwalker, model, eref, xp) -> gradj_last(fwalker, model, eref, xp, ψtrial′, τ),
     "sum grad log j" => (fwalker, model, eref, xp) -> gradj(fwalker, model, eref, xp, ψtrial′, τ),
+    # old trial fn values
+    "grad log psi hist" => (fwalker, model, eref, xp) -> grad_logpsi(fwalker, model, eref, xp, ψtrial′),
+    "grad log psi hist (warp)" => (fwalker, model, eref, xp) -> grad_logpsi_warp(fwalker, model, eref, xp, ψtrial′, τ),
+    "grad log psi old" => (fwalker, model, eref, xp) -> grad_logpsi_old(fwalker, model, eref, xp),
+    "grad log psi old (warp)" => (fwalker, model, eref, xp) -> grad_logpsi_old_warp(fwalker, model, eref, xp),
+    # pulay force warp correction for exact force
+    "pulay warp correction exact" => (fwalker, model, eref, xp) -> pulay_force_warp_correction_exact(fwalker, model, eref, xp, ψtrial′, τ),
 )
 
 rng = MersenneTwister(16224267)
@@ -102,9 +109,12 @@ fat_walkers = [QuantumMonteCarlo.FatWalker(
         "grad s (warp, p/q)" => CircularBuffer(lag),
         "grad t (warp, p/q)" => CircularBuffer(lag),
         "sum grad log j" => CircularBuffer(lag),
+        "grad log psi hist" => CircularBuffer(lag),
+        "grad log psi hist (warp)" => CircularBuffer(lag),
     ),
     [
         ("Local energy", "grad log psi"),
+        ("Local energy", "pulay warp correction exact"),
         ("Local energy", "grad log psi (warp)"),
         ("Local energy", "grad s"),
         ("Local energy", "grad t"),
@@ -116,6 +126,8 @@ fat_walkers = [QuantumMonteCarlo.FatWalker(
         ("Local energy", "grad t (warp, p/q)"),
         ("Local energy", "grad log j"),
         ("Local energy", "sum grad log j"),
+        ("Local energy", "grad log psi old"),
+        ("Local energy", "grad log psi old (warp)"),
     ]
     ) for walker in walkers
 ]

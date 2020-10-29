@@ -55,19 +55,25 @@ function gradel(fwalker, model, eref, x′, ψt′, τ; warp=false)
     ψ′ = ψt′
     ∇ψ′ = ψ′.gradient
 
-    if warp
-        x̅, _ = node_warp(x, ψ.value(x), ∇ψ(x), ψ′.value(x), ∇ψ′(x), τ)
-    else
-        x̅ = x
-    end
+    local_e(x) = model.hamiltonian_recompute(ψ, x) / ψ.value(x)
 
     el = model.hamiltonian_recompute(ψ, x) / ψ.value(x)
-    el′ = hamiltonian_recompute′(ψt′, x̅) / ψt′.value(x̅)
+    el′ = hamiltonian_recompute′(ψt′, x) / ψt′.value(x)
+
+    dx = 1e-5
+    ∂ₓel = (local_e(x .+ dx) - local_e(x .- dx)) / 2dx
+
+    if warp
+        x̅, _ = node_warp(x, ψ.value(x), ∇ψ(x), ψ′.value(x), ∇ψ′(x), τ)
+        ∂ₐx̅ = (x̅ - x)[1] / da
+    else
+        ∂ₐx̅ = 0
+    end
     
-    deriv = (el′ - el) / da
+    ∇ₐel = (el′ - el) / da
     #println("$deriv")
 
-    return deriv
+    return ∇ₐel + ∂ₐx̅ * ∂ₓel
 end
 
 function grads(fwalker, model, eref, x′, ψt′, τ; warp=false)
@@ -159,16 +165,60 @@ function gradt(fwalker, model, eref, x′, ψt′, τ; usepq=false, warp=false)
         #deriv = (log(abs(ps(x̅′, x̅) * ts(x̅′, x̅) + qs(x̅′, x̅))) - log(abs(p(x′, x) * t(x′, x) + q(x′, x)))) / da
         #deriv = (ps(x̅′, x̅)*log(ts(x̅′, x̅)) + qs(x̅′, x̅)*log(ts(x̅, x̅)) - (p(x′, x)*log(t(x′, x)) + q(x′, x)*log(t(x, x)))) / da
         #deriv = (log(ps(x̅′, x̅) * gs(x̅′, x̅) + qs(x̅′, x̅)) - log(p(x′, x) * g(x′, x) + q(x′, x))) / da
-        #deriv = (ps(x̅′, x̅) * (log(ts(x̅′, x̅)) + τ*ss(x̅′, x̅)) + qs(x̅′, x̅) - (p(x′, x) * (log(t(x′, x)) + s(x′, x) * τ) + q(x′, x))) / da
-        deriv = (log(ps(x̅′, x̅) * gs(x̅′, x̅) + qs(x̅′, x̅)) - log(p(x′, x) * g(x′, x) + q(x′, x))) / da
-    else 
+        deriv = (ps(x̅′, x̅) * (log(ts(x̅′, x̅)) + τ*ss(x̅′, x̅)) + qs(x̅′, x̅) - (p(x′, x) * (log(t(x′, x)) + s(x′, x) * τ) + q(x′, x))) / da
+        #deriv = (log(ps(x̅′, x̅) * gs(x̅′, x̅) + qs(x̅′, x̅)) - log(p(x′, x) * g(x′, x) + q(x′, x))) / da
+    elseif usepq && accepted
         deriv = (log(gs(x̅′, x̅)) - log(g(x′, x))) / da
     #    #deriv = ((log(ts(x̅′, x̅)) + τ*ss(x̅′, x̅)) - log(t(x′, x)) - τ*s(x′, x)) / da
    # else
    #     deriv = 0
+    elseif !warp
+        #deriv = accepted ? (log(gs(x′, x)) - log(g(x′, x))) / da : 0.0
+        deriv = accepted ? (log(gs(x′, x)) - log(g(x′, x))) / da : (ss(x, x) - s(x, x)) / da * τ
+    elseif warp
+        ∂ₐlnG = (log(gs(x′, x)) - log(g(x′, x))) / da
+        ∂ₐS = (ss(x′, x) - s(x′, x)) / da * τ
+        deriv = accepted ? ∂ₐlnG : ∂ₐS
     end
 
     return deriv
+
+end
+
+function pulay_force_warp_correction_exact(fwalker, model, eref, xp, ψt′, τ)
+
+    x = fwalker.walker.configuration_old
+
+    accepted = xp == fwalker.walker.configuration
+
+    x′ = fwalker.walker.configuration
+
+    ψ = model.wave_function
+    x̅′, jac = node_warp(x′, ψ.value(x′), ψ.gradient(x′), ψt′.value(x′), ψt′.gradient(x′), τ)
+
+    el(r) = model.hamiltonian_recompute(ψ, r) / ψ.value(r)
+    els(r) = hamiltonian_recompute′(ψt′, r) / ψt′.value(r)
+
+    v(r) = ψ.gradient(r) / ψ.value(r)
+    vs(r) = ψt′.gradient(r) / ψt′.value(r)
+
+    t(r′, r) = exp(-norm(r′ - r - v(r)*τ)^2 / 2τ)
+    ts(r′, r) = exp(-norm(r′ - r - vs(r)*τ)^2 / 2τ)
+
+    s(r′, r) = eref - 0.5(el(r) + el(r′))
+    ss(r′, r) = eref - 0.5(els(r) + els(r′))
+
+    g(r′, r) = t(r′, r) * exp(τ * s(r′, r))
+    gs(r′, r) = ts(r′, r) * exp(τ * ss(r′, r))
+
+    dx = 1e-5
+
+    ∂ₓlnG = (log(g(x′ .+ dx, x)) - log(g(x′ .- dx, x))) / 2dx
+    ∂ₓS = (ss(x′ .+ dx, x) - s(x′ .- dx, x)) / 2dx * τ
+
+    ∂ₐx̅ = (x̅′ - x′) / da
+
+    return accepted ? ∂ₐx̅[1] * ∂ₓlnG : ∂ₐx̅[1] * ∂ₓS
 
 end
 
@@ -233,6 +283,14 @@ function grad_logpsi_warp(fwalker, model, eref, x′, ψt′, τ)
     deriv = (log(abs(ψt′.value(x̅))) - log(abs(ψ))) / da
 
     return deriv 
+end
+
+function grad_logpsi_old(fwalker, model, eref, x′)
+    return first(fwalker.data["grad log psi hist"])
+end
+
+function grad_logpsi_old_warp(fwalker, model, eref, x′)
+    return first(fwalker.data["grad log psi hist (warp)"])
 end
 
 function get_weights(fname)
