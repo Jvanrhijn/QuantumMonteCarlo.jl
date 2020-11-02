@@ -116,7 +116,7 @@ def compute_forces(fpath):
 
     force_pulay_exact_warp = -(
                 (el_times_gderiv_sum_warp - energy*gderiv_sum_warp) \
-            +   (el_times_jderiv_sum - energy*jderiv_sum) \
+            +   (el_times_jac_logderiv - energy*jac_logderiv) \
             )
 
 
@@ -127,7 +127,6 @@ def compute_forces(fpath):
     force_pulay_exact_warp_pq = -(
                 el_times_gderiv_sum_warp_pq - energy*gderiv_sum_warp_pq \
             +   el_times_jderiv_sum - energy*jderiv_sum \
-                + (el_times_jac_logderiv - energy*jac_logderiv) \
             )
 
     force_pulay_vd = -(
