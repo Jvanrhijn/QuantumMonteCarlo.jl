@@ -118,6 +118,8 @@ function greens_function_gradient(fwalker, model, eref, x′, ψt′, τ; usepq=
     ψold = ψ.value(x)
     ψproposed = ψ.value(x′)
 
+    node_reject = sign(ψold) != sign(ψproposed)
+
     if !usepq
         x′ = walker.configuration
     end
