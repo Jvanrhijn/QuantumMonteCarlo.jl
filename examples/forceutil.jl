@@ -86,19 +86,9 @@ function branching_factor_gradient(fwalker, model, eref, x′, ψt′, τ; warp=
     el(r) = model.hamiltonian_recompute(ψ, r) / ψ.value(r)
     els(r) = hamiltonian_recompute′(ψt′, r) / ψt′.value(r)
 
-    v(r) = ψ.gradient(r) / ψ.value(r)
-    vs(r) = ψt′.gradient(r) / ψt′.value(r)
-
-    t(r′, r) = exp(-norm(r′ - r - v(r)*τ)^2 / 2τ)
-    ts(r′, r) = exp(-norm(r′ - r - vs(r)*τ)^2 / 2τ)
-
+    # branching factors, for primary and secondary geometry
     s(r) = eref - el(r)
     ss(r) = eref - els(r)
-
-    p(r′, r) = min(1, (ψ.value(r′) / ψ.value(r))^2 * t(r, r′) / t(r′, r))
-    q(r′, r) = 1 - p(r′, r)
-    ps(r′, r) = min(1, (ψt′.value(r′) / ψt′.value(r))^2 * ts(r, r′) / ts(r′, r))
-    qs(r′, r) = 1 - ps(r′, r)
 
     S(r′, r) = 0.5 * τ * (s(r) + s(r′))
     Ss(r′, r) = 0.5 * τ * (ss(r) + ss(r′))
@@ -128,8 +118,6 @@ function greens_function_gradient(fwalker, model, eref, x′, ψt′, τ; usepq=
     ψold = ψ.value(x)
     ψproposed = ψ.value(x′)
 
-    node_reject = sign(ψold) != sign(ψproposed)
-
     if !usepq
         x′ = walker.configuration
     end
@@ -140,18 +128,25 @@ function greens_function_gradient(fwalker, model, eref, x′, ψt′, τ; usepq=
     el(r) = model.hamiltonian_recompute(ψ, r) / ψ.value(r)
     els(r) = hamiltonian_recompute′(ψt′, r) / ψt′.value(r)
 
+    # drift velocity
     v(r) = ψ.gradient(r) / ψ.value(r)
     vs(r) = ψt′.gradient(r) / ψt′.value(r)
 
+    # drift-diffusion greens function
     t(r′, r) = exp(-norm(r′ - r - v(r)*τ)^2 / 2τ)
     ts(r′, r) = exp(-norm(r′ - r - vs(r)*τ)^2 / 2τ)
 
+    # branching factors
     s(r′, r) = eref - 0.5(el(r) + el(r′))
     ss(r′, r) = eref - 0.5(els(r) + els(r′))
 
+    # full greens function
     g(r′, r) = t(r′, r) * exp(τ * s(r′, r))
     gs(r′, r) = ts(r′, r) * exp(τ * ss(r′, r))
 
+    # acceptance and rejection probabilities.
+    # The factor at the end ensures that p = 0 when the move x -> x′
+    # crosses a node.
     p(r′, r) = min(1, (ψ.value(r′) / ψ.value(r))^2 * t(r, r′) / t(r′, r)) * Float64(sign(ψ.value(r′)) == sign(ψ.value(r)))
     q(r′, r) = 1 - p(r′, r)
     ps(r′, r) = min(1, (ψt′.value(r′) / ψt′.value(r))^2 * ts(r, r′) / ts(r′, r)) * Float64(sign(ψt′.value(r)) == sign(ψt′.value(r′)))
@@ -166,73 +161,13 @@ function greens_function_gradient(fwalker, model, eref, x′, ψt′, τ; usepq=
         x̅′ = x′
     end
 
-    if usepq && node_reject #!accepted
+    if usepq
         deriv = (ps(x̅′, x̅) * (log(ts(x̅′, x̅)) + τ*ss(x̅′, x̅)) + qs(x̅′, x̅) - (p(x′, x) * (log(t(x′, x)) + s(x′, x) * τ) + q(x′, x))) / da
-    elseif usepq
+    else
         deriv = (log(gs(x̅′, x̅)) - log(g(x′, x))) / da
-    elseif !warp
-        ∇ₐv = (vs(x) - v(x)) / da
-        u = x′ - x - v(x)*τ
-        #∇t = dot(u, ∇ₐv)
-        ∇t = dot(u, ∇ₐv)
-        ∇s = (ss(x′, x) - s(x′, x)) / da * τ
-        deriv = node_reject ? ∇s : (log(gs(x′, x)) - log(g(x′, x))) / da
-        #deriv = (log(gs(x′, x)) - log(g(x′, x))) / da
-    elseif warp
-        ∂ₐlnG = (log(gs(x′, x)) - log(g(x′, x))) / da
-        ∂ₐS = (ss(x′, x) - s(x′, x)) / da * τ
-        deriv = node_reject ? ∂ₐS : ∂ₐlnG
     end
 
     return deriv
-
-end
-
-function pulay_force_warp_correction_exact(fwalker, model, eref, xp, ψt′, τ)
-
-    ψ = model.wave_function
-    x = fwalker.walker.configuration_old
-
-    ψold = ψ.value(x)
-    ψproposed = ψ.value(xp)
-
-    node_reject = sign(ψold) != sign(ψproposed)
-
-    accepted = xp == fwalker.walker.configuration
-
-    x′ = fwalker.walker.configuration
-
-    x̅′, jac′ = node_warp(x′, ψ.value(x′), ψ.gradient(x′), ψt′.value(x′), ψt′.gradient(x′), τ)
-    x̅, jac = node_warp(x, ψ.value(x), ψ.gradient(x), ψt′.value(x), ψt′.gradient(x), τ)
-
-    el(r) = model.hamiltonian_recompute(ψ, r) / ψ.value(r)
-    els(r) = hamiltonian_recompute′(ψt′, r) / ψt′.value(r)
-
-    v(r) = ψ.gradient(r) / ψ.value(r)
-    vs(r) = ψt′.gradient(r) / ψt′.value(r)
-
-    t(r′, r) = exp(-norm(r′ - r - v(r)*τ)^2 / 2τ)
-    ts(r′, r) = exp(-norm(r′ - r - vs(r)*τ)^2 / 2τ)
-
-    s(r′, r) = eref - 0.5(el(r) + el(r′))
-    ss(r′, r) = eref - 0.5(els(r) + els(r′))
-
-    g(r′, r) = t(r′, r) * exp(τ * s(r′, r))
-    gs(r′, r) = ts(r′, r) * exp(τ * ss(r′, r))
-
-    dx = 1e-10
-
-    ∂ₓlnG′ = (log(g(x′ .+ dx, x)) - log(g(x′ .- dx, x))) / 2dx
-    ∂ₓS′ = (s(x′ .+ dx, x) - s(x′ .- dx, x)) / 2dx * τ
-
-    ∂ₓlnG = (log(g(x′, x .+ dx)) - log(g(x′, x .- dx))) / 2dx
-    ∂ₓS = (s(x′, x .+ dx) - s(x′, x .- dx)) / 2dx * τ
-
-    ∂ₐx̅′ = (x̅′ - x′) / da
-    ∂ₐx̅ = (x̅ - x) / da
-
-    return node_reject ? ∂ₐx̅[1] * ∂ₓS + ∂ₐx̅′[1] * ∂ₓS′ : ∂ₐx̅′[1] * ∂ₓlnG′ + ∂ₐx̅[1] * ∂ₓlnG
-    #return  ∂ₐx̅′[1] * ∂ₓlnG′ + ∂ₐx̅[1] * ∂ₓlnG
 
 end
 

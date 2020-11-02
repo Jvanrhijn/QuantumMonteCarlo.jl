@@ -105,10 +105,6 @@ def compute_forces(fpath):
     el_times_psilogderiv = data["Local energy * grad log psi"][()][1:]
     el_times_psilogderiv_warp = data["Local energy * grad log psi (warp)"][()][1:]
 
-    # exact force pulay correction
-    pulay_warp_correction = data["pulay warp correction exact"][()][1:]
-    el_times_pulay_warp_correction = data["Local energy * pulay warp correction exact"][()][1:]
-
     # Hellmann-Feynman force
     force_hf = -local_e_deriv
     force_hf_warp = -local_e_deriv_warp
@@ -121,7 +117,6 @@ def compute_forces(fpath):
     force_pulay_exact_warp = -(
                 (el_times_gderiv_sum_warp - energy*gderiv_sum_warp) \
             +   (el_times_jderiv_sum - energy*jderiv_sum) \
-            +    (el_times_pulay_warp_correction - energy*pulay_warp_correction) \
             )
 
 

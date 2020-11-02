@@ -20,8 +20,8 @@ hamiltonian_recompute′(ψ, x) = -0.5*ψ.laplacian(x)
 include("forceutil.jl")
 
 # DMC setting
-τ = 0.1e-2
-nwalkers = 20
+τ = 1e-1
+nwalkers = 10
 num_blocks = 700
 steps_per_block = trunc(Int64, 1/τ)
 neq = 70
@@ -80,10 +80,8 @@ observables = OrderedDict(
     "grad s (warp, p/q)" => (fwalker, model, eref, xp) -> branching_factor_gradient(fwalker, model, eref, xp, ψtrial′, τ; warp=true),
     "grad g (warp, p/q)" => (fwalker, model, eref, xp) -> greens_function_gradient(fwalker, model, eref, xp, ψtrial′, τ; usepq=true, warp=true),
     # Jacobians
-    "grad log j" => (fwalker, model, eref, xp) -> gradj_last(fwalker, model, eref, xp, ψtrial′, τ),
-    "sum grad log j" => (fwalker, model, eref, xp) -> gradj(fwalker, model, eref, xp, ψtrial′, τ),
-    # pulay force warp correction for exact force
-    "pulay warp correction exact" => (fwalker, model, eref, xp) -> pulay_force_warp_correction_exact(fwalker, model, eref, xp, ψtrial′, τ),
+    "grad log j" => (fwalker, model, eref, xp) -> jacobian_gradient_current(fwalker, model, eref, xp, ψtrial′, τ),
+    "sum grad log j" => (fwalker, model, eref, xp) -> jacobian_gradient_previous(fwalker, model, eref, xp, ψtrial′, τ),
 )
 
 rng = MersenneTwister(16224267)
@@ -96,34 +94,28 @@ fat_walkers = [QuantumMonteCarlo.FatWalker(
     observables, 
     OrderedDict(
         "grad s" => CircularBuffer(lag),
-        "grad t" => CircularBuffer(lag),
+        "grad g" => CircularBuffer(lag),
         "grad s (warp)" => CircularBuffer(lag),
-        "grad t (warp)" => CircularBuffer(lag),
+        "grad g (warp)" => CircularBuffer(lag),
         "grad s (p/q)" => CircularBuffer(lag),
-        "grad t (p/q)" => CircularBuffer(lag),
+        "grad g (p/q)" => CircularBuffer(lag),
         "grad s (warp, p/q)" => CircularBuffer(lag),
-        "grad t (warp, p/q)" => CircularBuffer(lag),
+        "grad g (warp, p/q)" => CircularBuffer(lag),
         "sum grad log j" => CircularBuffer(lag),
-        "grad log psi hist" => CircularBuffer(lag),
-        "grad log psi hist (warp)" => CircularBuffer(lag),
-        "pulay warp correction exact" => CircularBuffer(lag),
     ),
     [
         ("Local energy", "grad log psi"),
-        ("Local energy", "pulay warp correction exact"),
         ("Local energy", "grad log psi (warp)"),
         ("Local energy", "grad s"),
-        ("Local energy", "grad t"),
+        ("Local energy", "grad g"),
         ("Local energy", "grad s (warp)"),
-        ("Local energy", "grad t (warp)"),
+        ("Local energy", "grad g (warp)"),
         ("Local energy", "grad s (p/q)"),
-        ("Local energy", "grad t (p/q)"),
+        ("Local energy", "grad g (p/q)"),
         ("Local energy", "grad s (warp, p/q)"),
-        ("Local energy", "grad t (warp, p/q)"),
+        ("Local energy", "grad g (warp, p/q)"),
         ("Local energy", "grad log j"),
         ("Local energy", "sum grad log j"),
-        ("Local energy", "grad log psi old"),
-        ("Local energy", "grad log psi old (warp)"),
     ]
     ) for walker in walkers
 ]
