@@ -20,11 +20,11 @@ hamiltonian_recompute′(ψ, x) = -0.5*ψ.laplacian(x)
 include("forceutil.jl")
 
 # DMC setting
-τ = 1e-2
-nwalkers = 40
+τ = 0.1e-2
+nwalkers = 20
 num_blocks = 700
 steps_per_block = trunc(Int64, 1/τ)
-neq = 10
+neq = 70
 lag = trunc(Int64, steps_per_block)
 eref = 5.0/(2a)^2
 
@@ -64,29 +64,24 @@ observables = OrderedDict(
     # Local energy
     "Local energy" => local_energy,
     # Gradients of local energy
-    "grad el" => (fwalker, model, eref, xp) -> gradel(fwalker, model, eref, xp, ψtrial′, τ; warp=false),
-    "grad el (warp)" => (fwalker, model, eref, xp) -> gradel(fwalker, model, eref, xp, ψtrial′, τ; warp=true),
+    "grad el" => (fwalker, model, eref, xp) -> local_energy_gradient(fwalker, model, eref, xp, ψtrial′, τ; warp=false),
+    "grad el (warp)" => (fwalker, model, eref, xp) -> local_energy_gradient(fwalker, model, eref, xp, ψtrial′, τ; warp=true),
     # Gradients of log(ψ)
-    "grad log psi" => (fwalker, model, eref, xp) -> grad_logpsi(fwalker, model, eref, xp, ψtrial′),
-    "grad log psi (warp)" => (fwalker, model, eref, xp) -> grad_logpsi_warp(fwalker, model, eref, xp, ψtrial′, τ),
+    "grad log psi" => (fwalker, model, eref, xp) -> log_psi_gradient(fwalker, model, eref, xp, ψtrial′, τ; warp=false),
+    "grad log psi (warp)" => (fwalker, model, eref, xp) -> log_psi_gradient(fwalker, model, eref, xp, ψtrial′, τ; warp=true),
     # S, T with and without warp
-    "grad s" => (fwalker, model, eref, xp) -> grads(fwalker, model, eref, xp, ψtrial′, τ; warp=false),
-    "grad t" => (fwalker, model, eref, xp) -> gradt(fwalker, model, eref, xp, ψtrial′, τ; usepq=false, warp=false),
-    "grad s (warp)" => (fwalker, model, eref, xp) -> grads(fwalker, model, eref, xp, ψtrial′, τ; warp=true),
-    "grad t (warp)" => (fwalker, model, eref, xp) -> gradt(fwalker, model, eref, xp, ψtrial′, τ; usepq=false, warp=true),
+    "grad s" => (fwalker, model, eref, xp) -> branching_factor_gradient(fwalker, model, eref, xp, ψtrial′, τ; warp=false),
+    "grad g" => (fwalker, model, eref, xp) -> greens_function_gradient(fwalker, model, eref, xp, ψtrial′, τ; usepq=false, warp=false),
+    "grad s (warp)" => (fwalker, model, eref, xp) -> branching_factor_gradient(fwalker, model, eref, xp, ψtrial′, τ; warp=true),
+    "grad g (warp)" => (fwalker, model, eref, xp) -> greens_function_gradient(fwalker, model, eref, xp, ψtrial′, τ; usepq=false, warp=true),
     # S, T with p and q derivatives
-    "grad s (p/q)" => (fwalker, model, eref, xp) -> grads(fwalker, model, eref, xp, ψtrial′, τ; warp=false),
-    "grad t (p/q)" => (fwalker, model, eref, xp) -> gradt(fwalker, model, eref, xp, ψtrial′, τ; usepq=true, warp=false),
-    "grad s (warp, p/q)" => (fwalker, model, eref, xp) -> grads(fwalker, model, eref, xp, ψtrial′, τ; warp=true),
-    "grad t (warp, p/q)" => (fwalker, model, eref, xp) -> gradt(fwalker, model, eref, xp, ψtrial′, τ; usepq=true, warp=true),
+    "grad s (p/q)" => (fwalker, model, eref, xp) -> branching_factor_gradient(fwalker, model, eref, xp, ψtrial′, τ; warp=false),
+    "grad g (p/q)" => (fwalker, model, eref, xp) -> greens_function_gradient(fwalker, model, eref, xp, ψtrial′, τ; usepq=true, warp=false),
+    "grad s (warp, p/q)" => (fwalker, model, eref, xp) -> branching_factor_gradient(fwalker, model, eref, xp, ψtrial′, τ; warp=true),
+    "grad g (warp, p/q)" => (fwalker, model, eref, xp) -> greens_function_gradient(fwalker, model, eref, xp, ψtrial′, τ; usepq=true, warp=true),
     # Jacobians
     "grad log j" => (fwalker, model, eref, xp) -> gradj_last(fwalker, model, eref, xp, ψtrial′, τ),
     "sum grad log j" => (fwalker, model, eref, xp) -> gradj(fwalker, model, eref, xp, ψtrial′, τ),
-    # old trial fn values
-    "grad log psi hist" => (fwalker, model, eref, xp) -> grad_logpsi(fwalker, model, eref, xp, ψtrial′),
-    "grad log psi hist (warp)" => (fwalker, model, eref, xp) -> grad_logpsi_warp(fwalker, model, eref, xp, ψtrial′, τ),
-    "grad log psi old" => (fwalker, model, eref, xp) -> grad_logpsi_old(fwalker, model, eref, xp),
-    "grad log psi old (warp)" => (fwalker, model, eref, xp) -> grad_logpsi_old_warp(fwalker, model, eref, xp),
     # pulay force warp correction for exact force
     "pulay warp correction exact" => (fwalker, model, eref, xp) -> pulay_force_warp_correction_exact(fwalker, model, eref, xp, ψtrial′, τ),
 )
@@ -111,7 +106,7 @@ fat_walkers = [QuantumMonteCarlo.FatWalker(
         "sum grad log j" => CircularBuffer(lag),
         "grad log psi hist" => CircularBuffer(lag),
         "grad log psi hist (warp)" => CircularBuffer(lag),
-        #"pulay warp correction exact" => CircularBuffer(lag),
+        "pulay warp correction exact" => CircularBuffer(lag),
     ),
     [
         ("Local energy", "grad log psi"),

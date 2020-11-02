@@ -117,10 +117,7 @@ function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng
         #end
 
         if j <= neq
-            #eref = 0.5 * (eref + block_energy)
-            #eref = block_energy - log(block_weight)
-            eref -= log(block_weight)
-            #eref = eref - log(block_weight[b])/τ
+            eref = energy_estimate[1] - log(block_weight)
         end
 
 

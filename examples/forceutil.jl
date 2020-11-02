@@ -39,6 +39,7 @@ function node_warp_exact_jacobian(x, ψ, ψ′, τ)
 
     x̅ = warp(x)
 
+    # exact jacobian using automatic differentiation
     j = ForwardDiff.jacobian(warp, x)
 
     return x̅, det(j)
@@ -46,7 +47,7 @@ function node_warp_exact_jacobian(x, ψ, ψ′, τ)
 end
 
 
-function gradel(fwalker, model, eref, x′, ψt′, τ; warp=false)
+function local_energy_gradient(fwalker, model, eref, x′, ψt′, τ; warp=false)
     walker = fwalker.walker
     x = walker.configuration
     ψ = model.wave_function
@@ -75,7 +76,7 @@ function gradel(fwalker, model, eref, x′, ψt′, τ; warp=false)
     return ∇ₐel + ∂ₐx̅ * ∂ₓel
 end
 
-function grads(fwalker, model, eref, x′, ψt′, τ; warp=false)
+function branching_factor_gradient(fwalker, model, eref, x′, ψt′, τ; warp=false)
 
     x = fwalker.walker.configuration_old
     x′ = fwalker.walker.configuration
@@ -117,17 +118,22 @@ function grads(fwalker, model, eref, x′, ψt′, τ; warp=false)
 
 end
 
-function gradt(fwalker, model, eref, x′, ψt′, τ; usepq=false, warp=false)
+function greens_function_gradient(fwalker, model, eref, x′, ψt′, τ; usepq=false, warp=false)
     walker = fwalker.walker
     x = walker.configuration_old
+    ψ = model.wave_function
 
     accepted = x′ == fwalker.walker.configuration
+
+    ψold = ψ.value(x)
+    ψproposed = ψ.value(x′)
+
+    node_reject = sign(ψold) != sign(ψproposed)
 
     if !usepq
         x′ = walker.configuration
     end
 
-    ψ = model.wave_function
     ψnew = ψ.value(x′)
     ψnew′ = ψt′.value(x′)
 
@@ -160,30 +166,22 @@ function gradt(fwalker, model, eref, x′, ψt′, τ; usepq=false, warp=false)
         x̅′ = x′
     end
 
-    if usepq && !accepted
-        #deriv = (log(abs(ps(x̅′, x̅) * ts(x̅′, x̅) + qs(x̅′, x̅))) - log(abs(p(x′, x) * t(x′, x) + q(x′, x)))) / da
-        #deriv = (ps(x̅′, x̅)*log(ts(x̅′, x̅)) + qs(x̅′, x̅)*log(ts(x̅, x̅)) - (p(x′, x)*log(t(x′, x)) + q(x′, x)*log(t(x, x)))) / da
-        #deriv = (log(ps(x̅′, x̅) * gs(x̅′, x̅) + qs(x̅′, x̅)) - log(p(x′, x) * g(x′, x) + q(x′, x))) / da
+    if usepq && node_reject #!accepted
         deriv = (ps(x̅′, x̅) * (log(ts(x̅′, x̅)) + τ*ss(x̅′, x̅)) + qs(x̅′, x̅) - (p(x′, x) * (log(t(x′, x)) + s(x′, x) * τ) + q(x′, x))) / da
-        #deriv = (log(ps(x̅′, x̅) * gs(x̅′, x̅) + qs(x̅′, x̅)) - log(p(x′, x) * g(x′, x) + q(x′, x))) / da
-    elseif usepq && accepted
+    elseif usepq
         deriv = (log(gs(x̅′, x̅)) - log(g(x′, x))) / da
-    #    #deriv = ((log(ts(x̅′, x̅)) + τ*ss(x̅′, x̅)) - log(t(x′, x)) - τ*s(x′, x)) / da
-   # else
-   #     deriv = 0
     elseif !warp
-        #deriv = accepted ? (log(gs(x′, x)) - log(g(x′, x))) / da : 0.0
-        #deriv = accepted ? (log(gs(x′, x)) - log(g(x′, x))) / da : (ss(x, x) - s(x, x)) / da * τ
         ∇ₐv = (vs(x) - v(x)) / da
         u = x′ - x - v(x)*τ
         #∇t = dot(u, ∇ₐv)
         ∇t = dot(u, ∇ₐv)
         ∇s = (ss(x′, x) - s(x′, x)) / da * τ
-        deriv = accepted ? (log(gs(x′, x)) - log(g(x′, x))) / da : ∇s
+        deriv = node_reject ? ∇s : (log(gs(x′, x)) - log(g(x′, x))) / da
+        #deriv = (log(gs(x′, x)) - log(g(x′, x))) / da
     elseif warp
         ∂ₐlnG = (log(gs(x′, x)) - log(g(x′, x))) / da
         ∂ₐS = (ss(x′, x) - s(x′, x)) / da * τ
-        deriv = accepted ? ∂ₐlnG : ∂ₐS
+        deriv = node_reject ? ∂ₐS : ∂ₐlnG
     end
 
     return deriv
@@ -192,13 +190,18 @@ end
 
 function pulay_force_warp_correction_exact(fwalker, model, eref, xp, ψt′, τ)
 
+    ψ = model.wave_function
     x = fwalker.walker.configuration_old
+
+    ψold = ψ.value(x)
+    ψproposed = ψ.value(xp)
+
+    node_reject = sign(ψold) != sign(ψproposed)
 
     accepted = xp == fwalker.walker.configuration
 
     x′ = fwalker.walker.configuration
 
-    ψ = model.wave_function
     x̅′, jac′ = node_warp(x′, ψ.value(x′), ψ.gradient(x′), ψt′.value(x′), ψt′.gradient(x′), τ)
     x̅, jac = node_warp(x, ψ.value(x), ψ.gradient(x), ψt′.value(x), ψt′.gradient(x), τ)
 
@@ -217,26 +220,26 @@ function pulay_force_warp_correction_exact(fwalker, model, eref, xp, ψt′, τ)
     g(r′, r) = t(r′, r) * exp(τ * s(r′, r))
     gs(r′, r) = ts(r′, r) * exp(τ * ss(r′, r))
 
-    dx = 1e-5
+    dx = 1e-10
 
     ∂ₓlnG′ = (log(g(x′ .+ dx, x)) - log(g(x′ .- dx, x))) / 2dx
-    ∂ₓS′ = (ss(x′ .+ dx, x) - s(x′ .- dx, x)) / 2dx * τ
+    ∂ₓS′ = (s(x′ .+ dx, x) - s(x′ .- dx, x)) / 2dx * τ
 
     ∂ₓlnG = (log(g(x′, x .+ dx)) - log(g(x′, x .- dx))) / 2dx
-    ∂ₓS = (ss(x′, x .+ dx) - s(x′, x .- dx)) / 2dx * τ
+    ∂ₓS = (s(x′, x .+ dx) - s(x′, x .- dx)) / 2dx * τ
 
     ∂ₐx̅′ = (x̅′ - x′) / da
     ∂ₐx̅ = (x̅ - x) / da
 
-    return accepted ? ∂ₐx̅′[1] * ∂ₓlnG′ : (∂ₐx̅′[1] * ∂ₓS′)
+    return node_reject ? ∂ₐx̅[1] * ∂ₓS + ∂ₐx̅′[1] * ∂ₓS′ : ∂ₐx̅′[1] * ∂ₓlnG′ + ∂ₐx̅[1] * ∂ₓlnG
+    #return  ∂ₐx̅′[1] * ∂ₓlnG′ + ∂ₐx̅[1] * ∂ₓlnG
 
 end
 
-function gradj(fwalker, model, eref, x′, ψt′,  τ)
+function jacobian_gradient_previous(fwalker, model, eref, x′, ψt′,  τ)
     walker = fwalker.walker
 
     x = walker.configuration_old
-    #x = walker.configuration
 
     ψ = model.wave_function.value(x)
     ∇ψ = model.wave_function.gradient(x)
@@ -250,7 +253,7 @@ function gradj(fwalker, model, eref, x′, ψt′,  τ)
     return log(abs(jac)) / da
 end
 
-function gradj_last(fwalker, model, eref, x′, ψt′,  τ)
+function jacobian_gradient_current(fwalker, model, eref, x′, ψt′,  τ)
     walker = fwalker.walker
 
     #x = walker.configuration_old
@@ -268,16 +271,7 @@ function gradj_last(fwalker, model, eref, x′, ψt′,  τ)
     return log(abs(jac)) / da
 end
 
-function grad_logpsi(fwalker, model, eref, x′, ψt′)
-    x = fwalker.walker.configuration
-
-    ψ′ = ψt′.value(x)
-    ψ = model.wave_function.value(x)
-
-    (log(abs(ψ′)) - log(abs(ψ))) / da
-end
-
-function grad_logpsi_warp(fwalker, model, eref, x′, ψt′, τ)
+function log_psi_gradient(fwalker, model, eref, x′, ψt′, τ; warp=false)
     walker = fwalker.walker
 
     x = walker.configuration
@@ -288,94 +282,13 @@ function grad_logpsi_warp(fwalker, model, eref, x′, ψt′, τ)
     ∇ψ = model.wave_function.gradient(x)
     ∇ψ′ = ψt′.gradient(x)
 
-    x̅, _ = node_warp(x, ψ, ∇ψ, ψ′, ∇ψ′, τ)
+    if warp
+        x̅, _ = node_warp(x, ψ, ∇ψ, ψ′, ∇ψ′, τ)
+    else
+        x̅ = x
+    end
 
     deriv = (log(abs(ψt′.value(x̅))) - log(abs(ψ))) / da
 
     return deriv 
-end
-
-function grad_logpsi_old(fwalker, model, eref, x′)
-    return first(fwalker.data["grad log psi hist"])
-end
-
-function grad_logpsi_old_warp(fwalker, model, eref, x′)
-    return first(fwalker.data["grad log psi hist (warp)"])
-end
-
-function get_weights(fname)
-    h5open(fname, "r") do file
-        ws = read(file, "Weight")  
-        return ws
-    end
-end
-
-function hellmann_feynman_force(fname)
-    h5open(fname, "r") do file
-        ∇ₐel = read(file, "grad el")
-        ∇ₐel_warp = read(file, "grad el (warp)")
-        return -∇ₐel, -∇ₐel_warp
-    end
-end
-
-function pulay_force_vd(fname)
-    h5open(fname, "r") do file
-        els = read(file, "Local energy")
-        ws = read(file, "Weight")
-
-        energy = mean(els, Weights(ws))
-
-        ∇ₐlogψ = read(file, "grad log psi")
-        el∇ₐlogψ = read(file, "Local energy * grad log psi")
-
-        ∇ₐlogψwarp = read(file, "grad log psi (warp)")
-        el∇ₐlogψwarp = read(file, "Local energy * grad log psi (warp)")
-
-        ∇ₐlogj = read(file, "grad log j")
-        el∇ₐlogj = read(file, "Local energy * grad log j")
-
-        return -(
-            2.0*(el∇ₐlogψ - energy*∇ₐlogψ),
-            2.0*(el∇ₐlogψwarp - energy*∇ₐlogψwarp .+
-                  el∇ₐlogj - energy*∇ₐlogj)
-            )
-    end
-end
-
-function pulay_force_exact(fname)
-    h5open(fname, "r") do file
-        els = read(file, "Local energy")
-        ws = read(file, "Weight")
-
-        energy = mean(els, Weights(ws))
-
-        Σ∇ₐs = read(file, "grad s")
-        elΣ∇ₐs = read(file, "Local energy * grad s")
-
-        Σ∇ₐt = read(file, "grad t")
-        elΣ∇ₐt = read(file, "Local energy * grad t")
-
-        Σ∇ₐswarp = read(file, "grad s (warp)")
-        elΣ∇ₐswarp = read(file, "Local energy * grad s (warp)")
-
-        Σ∇ₐtwarp = read(file, "grad t (warp)")
-        elΣ∇ₐtwarp = read(file, "Local energy * grad t (warp)")
-
-        Σ∇ₐlogj = read(file, "sum grad log j")
-        elΣ∇ₐlogj = read(file, "Local energy * sum grad log j")
-
-        fp = -(
-            elΣ∇ₐs - energy*Σ∇ₐs .+ 
-            elΣ∇ₐt - energy*Σ∇ₐt
-        )
-
-        fpwarp = -(
-            elΣ∇ₐswarp - energy*Σ∇ₐswarp .+ 
-            elΣ∇ₐtwarp - energy*Σ∇ₐtwarp .+ 
-            elΣ∇ₐlogj - energy*Σ∇ₐlogj
-        )
-
-        return (fp, fpwarp)
-
-    end
 end

@@ -23,9 +23,9 @@ hamiltonian_recompute′(ψ, x) = -0.5*ψ.laplacian(x) + 0.5 * a′^2 * norm(x)^
 include("forceutil.jl")
 
 # DMC settings
-τ = 1e-1
+τ = 1e-2
 nwalkers = 10
-num_blocks = 1600
+num_blocks = 1000
 steps_per_block = trunc(Int64, 1/τ)
 neq = 10
 lag = trunc(Int64, 10*steps_per_block)
@@ -130,7 +130,7 @@ fat_walkers = [QuantumMonteCarlo.FatWalker(
     ) for walker in walkers
 ]
 
-#fat_walkers = [QuantumMonteCarlo.FatWalker(walker) for walker in walkers]
+fat_walkers = [QuantumMonteCarlo.FatWalker(walker) for walker in walkers]
 
 ### Actually run DMC
 energies, errors = QuantumMonteCarlo.run_dmc!(
@@ -143,7 +143,7 @@ energies, errors = QuantumMonteCarlo.run_dmc!(
     rng=rng, 
     neq=neq, 
     brancher=stochastic_reconfiguration_pyqmc!,
-    outfile="sho.hdf5", #ARGS[1],
+    #outfile="sho.hdf5", #ARGS[1],
     verbosity=:loud,
     branchtime=steps_per_block ÷ 10,
     #branchtime=1,

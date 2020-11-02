@@ -66,7 +66,7 @@ function optimal_stochastic_reconfiguration!(walkers, rng::AbstractRNG)
 end
 
 function simple_branching!(walkers, rng::AbstractRNG)
-    max_copies = 50
+    max_copies = 3
     to_delete = []
     copies = []
     #weights = map(w.walker.weight, walkers)

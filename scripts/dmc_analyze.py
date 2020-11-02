@@ -70,14 +70,11 @@ def compute_forces(fpath):
     sderiv_sum = data["grad s"][()][1:]        
     sderiv_sum_warp = data["grad s (warp)"][()][1:]        
 
-    sderiv_sum_pq = data["grad s (p/q)"][()][1:]        
-    sderiv_sum_warp_pq = data["grad s (warp, p/q)"][()][1:]        
+    gderiv_sum_pq = data["grad g (p/q)"][()][1:]        
+    gderiv_sum_warp_pq = data["grad g (warp, p/q)"][()][1:]
 
-    tderiv_sum_pq = data["grad t (p/q)"][()][1:]        
-    tderiv_sum_warp_pq = data["grad t (warp, p/q)"][()][1:]
-
-    tderiv_sum = data["grad t"][()][1:]
-    tderiv_sum_warp = data["grad t (warp)"][()][1:]        
+    gderiv_sum = data["grad g"][()][1:]
+    gderiv_sum_warp = data["grad g (warp)"][()][1:]        
 
     # Get j (sum) derivative
     jderiv_sum = data["sum grad log j"][()][1:]
@@ -87,14 +84,11 @@ def compute_forces(fpath):
     el_times_sderiv_sum = data["Local energy * grad s"][()][1:] 
     el_times_sderiv_sum_warp = data["Local energy * grad s (warp)"][()][1:]       
 
-    el_times_sderiv_sum_pq = data["Local energy * grad s (p/q)"][()][1:] 
-    el_times_sderiv_sum_warp_pq = data["Local energy * grad s (warp, p/q)"][()][1:]       
+    el_times_gderiv_sum_pq = data["Local energy * grad g (p/q)"][()][1:]        
+    el_times_gderiv_sum_warp_pq = data["Local energy * grad g (warp, p/q)"][()][1:]        
 
-    el_times_tderiv_sum_pq = data["Local energy * grad t (p/q)"][()][1:]        
-    el_times_tderiv_sum_warp_pq = data["Local energy * grad t (warp, p/q)"][()][1:]        
-
-    el_times_tderiv_sum = data["Local energy * grad t"][()][1:]        
-    el_times_tderiv_sum_warp = data["Local energy * grad t (warp)"][()][1:]        
+    el_times_gderiv_sum = data["Local energy * grad g"][()][1:]        
+    el_times_gderiv_sum_warp = data["Local energy * grad g (warp)"][()][1:]        
 
     # Get product of Local energy and j (sum) derivative
     el_times_jderiv_sum = data["Local energy * sum grad log j"][()][1:]
@@ -111,12 +105,6 @@ def compute_forces(fpath):
     el_times_psilogderiv = data["Local energy * grad log psi"][()][1:]
     el_times_psilogderiv_warp = data["Local energy * grad log psi (warp)"][()][1:]
 
-    # Get old psi derivative
-    psilogderiv_old = data["grad log psi old"][()][1:]
-    psilogderiv_old_warp = data["grad log psi old (warp)"][()][1:]
-    el_times_psilogderiv_old = data["Local energy * grad log psi old"][()][1:]
-    el_times_psilogderiv_old_warp = data["Local energy * grad log psi old (warp)"][()][1:]
-
     # exact force pulay correction
     pulay_warp_correction = data["pulay warp correction exact"][()][1:]
     el_times_pulay_warp_correction = data["Local energy * pulay warp correction exact"][()][1:]
@@ -127,27 +115,22 @@ def compute_forces(fpath):
 
     # Pulay force
     force_pulay_exact = -(
-                el_times_tderiv_sum - energy*tderiv_sum \
-            +   0*(el_times_sderiv_sum - energy*sderiv_sum) \
+                el_times_gderiv_sum - energy*gderiv_sum \
             )
 
     force_pulay_exact_warp = -(
-                (el_times_tderiv_sum_warp - energy*tderiv_sum_warp) \
-            +   0*(el_times_sderiv_sum_warp - energy*sderiv_sum_warp) \
-            +   0*(el_times_jderiv_sum - energy*jderiv_sum) \
-                + (el_times_jac_logderiv - energy*jac_logderiv) \
+                (el_times_gderiv_sum_warp - energy*gderiv_sum_warp) \
+            +   (el_times_jderiv_sum - energy*jderiv_sum) \
             +    (el_times_pulay_warp_correction - energy*pulay_warp_correction) \
             )
 
 
     force_pulay_exact_pq = -(
-                el_times_tderiv_sum_pq - energy*tderiv_sum_pq \
-            +   0*(el_times_sderiv_sum_pq - energy*sderiv_sum_pq) \
+                el_times_gderiv_sum_pq - energy*gderiv_sum_pq \
             )
 
     force_pulay_exact_warp_pq = -(
-                el_times_tderiv_sum_warp_pq - energy*tderiv_sum_warp_pq \
-            +   0*(el_times_sderiv_sum_warp_pq - energy*sderiv_sum_warp_pq) \
+                el_times_gderiv_sum_warp_pq - energy*gderiv_sum_warp_pq \
             +   el_times_jderiv_sum - energy*jderiv_sum \
                 + (el_times_jac_logderiv - energy*jac_logderiv) \
             )
@@ -159,7 +142,7 @@ def compute_forces(fpath):
 
     force_pulay_vd_warp = -(
             2 * (el_times_psilogderiv_warp - energy*psilogderiv_warp) \
-            +    el_times_sderiv_sum_warp - energy*sderiv_sum_warp \
+            +   (el_times_sderiv_sum_warp - energy*sderiv_sum_warp) \
             +   (el_times_jac_logderiv - energy*jac_logderiv) \
             )
 
