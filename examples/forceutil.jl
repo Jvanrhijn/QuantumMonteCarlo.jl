@@ -166,7 +166,7 @@ function greens_function_gradient(fwalker, model, eref, x′, ψt′, τ; usepq=
     if usepq
         deriv = (log(ps(x̅′, x̅) * gs(x̅′, x̅) + qs(x̅′, x̅) * gbs(x̅, x̅)) - log(p(x′, x) * g(x′, x) + q(x′, x) * gb(x, x))) / da
     else
-        deriv = accepted ? (log(gs(x̅′, x̅)) - log(g(x′, x))) / da : 0.0
+        deriv = accepted ? (log(gs(x̅′, x̅)) - log(g(x′, x))) / da : τ * (ss(x̅′, x̅) - s(x′, x)) / da
     end
 
     return deriv
