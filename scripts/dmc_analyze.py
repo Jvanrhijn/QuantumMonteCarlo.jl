@@ -120,7 +120,7 @@ def compute_forces(fpath):
 
     force_pulay_exact_warp = -(
                 (el_times_gderiv_sum_warp - energy*gderiv_sum_warp) \
-            +   (el_times_jderiv_sum - energy*jderiv_sum) \
+            +   (el_times_jac_logderiv - energy*jac_logderiv) \
             )
 
     pb = np.average(-(el_times_pulaybias - energy*pulay_bias), weights=weights)
