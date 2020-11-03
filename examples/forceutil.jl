@@ -64,7 +64,8 @@ function local_energy_gradient(fwalker, model, eref, x′, ψt′, τ; warp=fals
     ∂ₓel = (local_e(x .+ dx) - local_e(x .- dx)) / 2dx
 
     if warp
-        x̅, _ = node_warp(x, ψ.value(x), ∇ψ(x), ψ′.value(x), ∇ψ′(x), τ)
+        #x̅, _ = node_warp(x, ψ.value(x), ∇ψ(x), ψ′.value(x), ∇ψ′(x), τ)
+        x̅, _ = node_warp_exact_jacobian(x, ψ, ψ′, τ)
         ∂ₐx̅ = (x̅ - x)[1] / da
     else
         ∂ₐx̅ = 0
@@ -95,8 +96,10 @@ function branching_factor_gradient(fwalker, model, eref, x′, ψt′, τ; warp=
 
     # perform warp
     if warp
-        x̅, _ = node_warp(x, ψ.value(x), ψ.gradient(x), ψt′.value(x), ψt′.gradient(x), τ)
-        x̅′, _ = node_warp(x′, ψ.value(x′), ψ.gradient(x′), ψt′.value(x′), ψt′.gradient(x′), τ)
+        #x̅, _ = node_warp(x, ψ.value(x), ψ.gradient(x), ψt′.value(x), ψt′.gradient(x), τ)
+        #x̅′, _ = node_warp(x′, ψ.value(x′), ψ.gradient(x′), ψt′.value(x′), ψt′.gradient(x′), τ)
+        x̅, _ = node_warp_exact_jacobian(x, ψ, ψt′, τ)
+        x̅′, _ = node_warp_exact_jacobian(x′, ψ, ψt′, τ)
     else
         x̅ = x
         x̅′ = x′
@@ -118,6 +121,8 @@ function greens_function_gradient(fwalker, model, eref, x′, ψt′, τ; usepq=
     ψold = ψ.value(x)
     ψproposed = ψ.value(x′)
 
+    node_reject = sign(ψold) != sign(ψproposed)
+
     if !usepq
         x′ = walker.configuration
     end
@@ -129,6 +134,8 @@ function greens_function_gradient(fwalker, model, eref, x′, ψt′, τ; usepq=
     els(r) = hamiltonian_recompute′(ψt′, r) / ψt′.value(r)
 
     # drift velocity
+    #v(r) = QuantumMonteCarlo.cutoff_velocity(ψ.gradient(r) / ψ.value(r), τ)
+    #vs(r) = QuantumMonteCarlo.cutoff_velocity(ψt′.gradient(r) / ψt′.value(r), τ)
     v(r) = ψ.gradient(r) / ψ.value(r)
     vs(r) = ψt′.gradient(r) / ψt′.value(r)
 
@@ -154,20 +161,77 @@ function greens_function_gradient(fwalker, model, eref, x′, ψt′, τ; usepq=
 
     # perform warp
     if warp
-        x̅, _ = node_warp(x, ψ.value(x), ψ.gradient(x), ψt′.value(x), ψt′.gradient(x), τ)
-        x̅′, _ = node_warp(x′, ψ.value(x′), ψ.gradient(x′), ψt′.value(x′), ψt′.gradient(x′), τ)
+        #x̅, _ = node_warp(x, ψ.value(x), ψ.gradient(x), ψt′.value(x), ψt′.gradient(x), τ)
+        #x̅′, _ = node_warp(x′, ψ.value(x′), ψ.gradient(x′), ψt′.value(x′), ψt′.gradient(x′), τ)
+        x̅, _ = node_warp_exact_jacobian(x, ψ, ψt′, τ)
+        x̅′, _ = node_warp_exact_jacobian(x′, ψ, ψt′, τ)
     else
         x̅ = x
         x̅′ = x′
     end
 
     if usepq
-        deriv = (ps(x̅′, x̅) * (log(ts(x̅′, x̅)) + τ*ss(x̅′, x̅)) + qs(x̅′, x̅) * τ*ss(x̅, x̅) - (p(x′, x) * (log(t(x′, x)) + s(x′, x) * τ) + q(x′, x) * τ  * s(x, x))) / da
+        #deriv = !node_reject ? (ps(x̅′, x̅) * (log(ts(x̅′, x̅)) + τ*ss(x̅′, x̅)) + qs(x̅′, x̅) - (p(x′, x) * (log(t(x′, x)) + s(x′, x) * τ) + q(x′, x))) / da : 0.0
+        #deriv = (ps(x̅′, x̅) * (log(ts(x̅′, x̅)) + τ*ss(x̅′, x̅)) + qs(x̅′, x̅) - (p(x′, x) * (log(t(x′, x)) + s(x′, x) * τ) + q(x′, x))) / da
+        #deriv = accepted ? (ps(x̅′, x̅) * (log(ts(x̅′, x̅)) + τ*ss(x̅′, x̅)) + qs(x̅′, x̅) - (p(x′, x) * (log(t(x′, x)) + s(x′, x) * τ) + q(x′, x))) / da : 0.0
+        deriv = (log(ps(x′, x̅) * gs(x′, x̅) + qs(x′, x̅) * exp(ss(x, x̅)*τ)) - log(p(x′, x) * g(x′, x) + q(x′, x) * exp(s(x, x)*τ))) / da
     else
-        deriv = (log(gs(x̅′, x̅)) - log(g(x′, x))) / da
+        #deriv = !node_reject ? (log(gs(x̅′, x̅)) - log(g(x′, x))) / da : τ * (ss(x̅, x̅) - s(x, x)) / da
+        deriv = !node_reject ? (log(gs(x′, x̅)) - log(g(x′, x))) / da : τ * (ss(x, x̅) - s(x, x)) / da
     end
 
     return deriv
+
+end
+
+function pulay_bias(fwalker, model, eref, x′, ψt′, τ)
+    walker = fwalker.walker
+    x = walker.configuration_old
+    ψ = model.wave_function
+
+    accepted = x′ == fwalker.walker.configuration
+
+    ψold = ψ.value(x)
+    ψproposed = ψ.value(x′)
+
+    node_reject = sign(ψold) != sign(ψproposed)
+
+    x′ = walker.configuration
+
+    ψnew = ψ.value(x′)
+    ψnew′ = ψt′.value(x′)
+
+    el(r) = model.hamiltonian_recompute(ψ, r) / ψ.value(r)
+    els(r) = hamiltonian_recompute′(ψt′, r) / ψt′.value(r)
+
+    # drift velocity
+    #v(r) = QuantumMonteCarlo.cutoff_velocity(ψ.gradient(r) / ψ.value(r), τ)
+    #vs(r) = QuantumMonteCarlo.cutoff_velocity(ψt′.gradient(r) / ψt′.value(r), τ)
+    v(r) = ψ.gradient(r) / ψ.value(r)
+    vs(r) = ψt′.gradient(r) / ψt′.value(r)
+
+    # drift-diffusion greens function
+    t(r′, r) = exp(-norm(r′ - r - v(r)*τ)^2 / 2τ)
+    ts(r′, r) = exp(-norm(r′ - r - vs(r)*τ)^2 / 2τ)
+
+    # branching factors
+    s(r′, r) = eref - 0.5(el(r) + el(r′))
+    ss(r′, r) = eref - 0.5(els(r) + els(r′))
+
+    # full greens function
+    g(r′, r) = t(r′, r) * exp(τ * s(r′, r))
+    gs(r′, r) = ts(r′, r) * exp(τ * ss(r′, r))
+
+    dr = 1e-5
+    ∂ᵢlnG(r′, r) = (g(r′, r .+ dr) - g(r′, r .- dr)) / 2dr
+    ∂ᵢ′lnG(r′, r) = (g(r′ .+ dr, r) - g(r′ .- dr, r)) / 2dr
+    Δxᵢ = node_warp_exact_jacobian(x, ψ, ψt′, τ)[1] - x
+    Δxᵢ′ = node_warp_exact_jacobian(x′, ψ, ψt′, τ)[1] - x′
+
+    Δx(x) = node_warp_exact_jacobian(x , ψ, ψt′, τ)[1] - x
+    ∂ᵢΔx(x) = (Δx(x .+ dr)[1] - Δx(x .- dr)[1]) / 2dr
+
+    return Δxᵢ[1]/da * ∂ᵢlnG(x′, x) + ∂ᵢΔx(x) / da
 
 end
 

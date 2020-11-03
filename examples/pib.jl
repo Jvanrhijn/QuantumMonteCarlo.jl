@@ -20,9 +20,9 @@ hamiltonian_recompute′(ψ, x) = -0.5*ψ.laplacian(x)
 include("forceutil.jl")
 
 # DMC setting
-τ = 1e-2
+τ = 1e-1
 nwalkers = 10
-num_blocks = 700
+num_blocks = 400
 steps_per_block = trunc(Int64, 1/τ)
 neq = 70
 lag = trunc(Int64, steps_per_block)
@@ -82,6 +82,8 @@ observables = OrderedDict(
     # Jacobians
     "grad log j" => (fwalker, model, eref, xp) -> jacobian_gradient_current(fwalker, model, eref, xp, ψtrial′, τ),
     "sum grad log j" => (fwalker, model, eref, xp) -> jacobian_gradient_previous(fwalker, model, eref, xp, ψtrial′, τ),
+    # bias
+    "pulay bias" => (fwalker, model, eref, xp) -> pulay_bias(fwalker, model, eref, xp, ψtrial′, τ),
 )
 
 rng = MersenneTwister(16224267)
@@ -102,6 +104,7 @@ fat_walkers = [QuantumMonteCarlo.FatWalker(
         "grad s (warp, p/q)" => CircularBuffer(lag),
         "grad g (warp, p/q)" => CircularBuffer(lag),
         "sum grad log j" => CircularBuffer(lag),
+        "pulay bias" => CircularBuffer(lag),
     ),
     [
         ("Local energy", "grad log psi"),
@@ -116,6 +119,7 @@ fat_walkers = [QuantumMonteCarlo.FatWalker(
         ("Local energy", "grad g (warp, p/q)"),
         ("Local energy", "grad log j"),
         ("Local energy", "sum grad log j"),
+        ("Local energy", "pulay bias"),
     ]
     ) for walker in walkers
 ]

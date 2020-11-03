@@ -105,6 +105,10 @@ def compute_forces(fpath):
     el_times_psilogderiv = data["Local energy * grad log psi"][()][1:]
     el_times_psilogderiv_warp = data["Local energy * grad log psi (warp)"][()][1:]
 
+    # pulay bias
+    el_times_pulaybias = data["Local energy * pulay bias"][()][1:]
+    pulay_bias = data["pulay bias"][()][1:]
+
     # Hellmann-Feynman force
     force_hf = -local_e_deriv
     force_hf_warp = -local_e_deriv_warp
@@ -119,6 +123,9 @@ def compute_forces(fpath):
             +   (el_times_jderiv_sum - energy*jderiv_sum) \
             )
 
+    pb = np.average(-(el_times_pulaybias - energy*pulay_bias), weights=weights)
+    print(pb)
+
 
     force_pulay_exact_pq = -(
                 el_times_gderiv_sum_pq - energy*gderiv_sum_pq \
@@ -126,8 +133,7 @@ def compute_forces(fpath):
 
     force_pulay_exact_warp_pq = -(
                 el_times_gderiv_sum_warp_pq - energy*gderiv_sum_warp_pq \
-            +   el_times_jderiv_sum - energy*jderiv_sum \
-                + (el_times_jac_logderiv - energy*jac_logderiv) \
+            +   (el_times_jderiv_sum - energy*jderiv_sum) \
             )
 
     force_pulay_vd = -(
