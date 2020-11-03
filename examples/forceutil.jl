@@ -162,7 +162,7 @@ function greens_function_gradient(fwalker, model, eref, x′, ψt′, τ; usepq=
     end
 
     if usepq
-        deriv = (ps(x̅′, x̅) * (log(ts(x̅′, x̅)) + τ*ss(x̅′, x̅)) + qs(x̅′, x̅) - (p(x′, x) * (log(t(x′, x)) + s(x′, x) * τ) + q(x′, x))) / da
+        deriv = (ps(x̅′, x̅) * (log(ts(x̅′, x̅)) + τ*ss(x̅′, x̅)) + qs(x̅′, x̅) * τ*ss(x̅, x̅) - (p(x′, x) * (log(t(x′, x)) + s(x′, x) * τ) + q(x′, x) * τ  * s(x, x))) / da
     else
         deriv = (log(gs(x̅′, x̅)) - log(g(x′, x))) / da
     end
