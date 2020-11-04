@@ -143,6 +143,8 @@ function greens_function_gradient(fwalker, model, eref, x′, ψt′, τ; usepq=
     # full greens function
     g(r′, r) = t(r′, r) * exp(τ * s(r′, r))
     gs(r′, r) = ts(r′, r) * exp(τ * ss(r′, r))
+    gb(r′, r) = exp(τ * s(r′, r))
+    gbs(r′, r) = exp(τ * ss(r′, r))
 
     # acceptance and rejection probabilities.
     # The factor at the end ensures that p = 0 when the move x -> x′
@@ -162,9 +164,9 @@ function greens_function_gradient(fwalker, model, eref, x′, ψt′, τ; usepq=
     end
 
     if usepq
-        deriv = (ps(x̅′, x̅) * (log(ts(x̅′, x̅)) + τ*ss(x̅′, x̅)) + qs(x̅′, x̅) - (p(x′, x) * (log(t(x′, x)) + s(x′, x) * τ) + q(x′, x))) / da
+        deriv = (log(ps(x̅′, x̅) * gs(x̅′, x̅) + qs(x̅′, x̅) * gbs(x̅, x̅)) - log(p(x′, x) * g(x′, x) + q(x′, x) * gb(x, x))) / da
     else
-        deriv = (log(gs(x̅′, x̅)) - log(g(x′, x))) / da
+        deriv = accepted ? (log(gs(x̅′, x̅)) - log(g(x′, x))) / da : 0.0
     end
 
     return deriv
