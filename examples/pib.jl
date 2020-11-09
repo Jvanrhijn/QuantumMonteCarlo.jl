@@ -20,7 +20,7 @@ hamiltonian_recompute′(ψ, x) = -0.5*ψ.laplacian(x)
 include("forceutil.jl")
 
 # DMC setting
-τ = 0.5e-3
+τ = 1e-3
 nwalkers = 1
 num_blocks = 5000
 steps_per_block = trunc(Int64, 1/τ)

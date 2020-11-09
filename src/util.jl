@@ -30,7 +30,7 @@ end
 num_digits = Int32 ∘ ceil ∘ log10
 
 
-function cutoff_velocity(v, τ; a=1)
+function cutoff_velocity(v, τ; a=10)
     vnorm = norm(v)
     return vnorm > 0 ? v * (-1 + sqrt(1 + 2*a*vnorm^2*τ))/(a*vnorm^2*τ) : v
 end
