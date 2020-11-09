@@ -102,9 +102,9 @@ function greens_function_gradient(fwalker, model, eref, x′, ψt′, τ; usepq=
     # acceptance and rejection probabilities.
     # The factor at the end ensures that p = 0 when the move x -> x′
     # crosses a node.
-    p(r′, r) = min(1, (ψ.value(r′) / ψ.value(r))^2 * t(r, r′) / t(r′, r)) #* Float64(sign(ψ.value(r′)) == sign(ψ.value(r)))
+    p(r′, r) = min(1, (ψ.value(r′) / ψ.value(r))^2 * t(r, r′) / t(r′, r)) * Float64(sign(ψ.value(r′)) == sign(ψ.value(r)))
     q(r′, r) = 1 - p(r′, r)
-    ps(r′, r) = min(1, (ψt′.value(r′) / ψt′.value(r))^2 * ts(r, r′) / ts(r′, r)) # * Float64(sign(ψt′.value(r)) == sign(ψt′.value(r′)))
+    ps(r′, r) = min(1, (ψt′.value(r′) / ψt′.value(r))^2 * ts(r, r′) / ts(r′, r)) * Float64(sign(ψt′.value(r)) == sign(ψt′.value(r′)))
     qs(r′, r) = 1 - ps(r′, r)
 
     # perform warp
@@ -117,7 +117,7 @@ function greens_function_gradient(fwalker, model, eref, x′, ψt′, τ; usepq=
     end
 
     if usepq
-        deriv = (log(ps(x̅′, x̅) * ts(x̅′, x̅) + qs(x̅′, x̅)) - log(p(x′, x) * t(x′, x) + q(x′, x))) / da
+        deriv = accepted ? (log(ps(x̅′, x̅) * ts(x̅′, x̅)) - log(p(x′, x) * t(x′, x))) / da : (log(qs(x̅′, x̅) * ts(x̅′, x̅)) - log(q(x′, x) * t(x′, x))) / da 
     else
         deriv = accepted ? (log(ts(x̅′, x̅)) - log(t(x′, x))) / da : 0.0
     end
