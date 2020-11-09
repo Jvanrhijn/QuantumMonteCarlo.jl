@@ -17,10 +17,7 @@ function move_walker!(walker, τ, ψ, rng::AbstractRNG)
     # with π(x) = ψ(x)², so ∇log(π) = 2∇log(ψ) = 2∇ψ/ψ.
     d = abs(ψval) / norm(∇ψ)
     Δx = v*τ + √τ * randn(rng, Float64, size(x))
-    #x′ = x + d * tanh.(Δx / d)
     x′ = x + Δx
-
-    #x′ = x .+ v*τ .+ sqrt(τ) * randn(rng, Float64, size(x))
 
     # Update the walker with this new configuration
     walker.configuration_old .= deepcopy(x)
@@ -44,17 +41,15 @@ function compute_acceptance!(walker, τ)
     # probability distribution ratio
     ratio = ψ′^2 / ψ^2
 
-    v = cutoff_velocity(∇ψ / ψ, τ)
-    v′ = cutoff_velocity(∇ψ′ / ψ′, τ)
-    println("Drift:    $v")
+    v = ∇ψ / ψ
+    v′ = ∇ψ′ / ψ′
 
     # MALA: compute the acceptance probability p
     # expression taken from https://en.wikipedia.org/wiki/Metropolis-adjusted_Langevin_algorithm
     num = exp(-norm(x .- x′ .- v′ * τ)^2 / 2τ)
     denom = exp(-norm(x′ .- x .- v * τ)^2 / 2τ)
 
-    #p = min(1.0, ratio * num / denom)
-    p = 1.0
+    p = min(1.0, ratio * num / denom)
      
     # Fixed-node: reject moves that change the sign of ψ
     if sign(ψ) != sign(ψ′)

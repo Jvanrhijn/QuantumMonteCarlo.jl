@@ -7,7 +7,7 @@ using Formatting
 using Dates
 
 
-function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng=MersenneTwister(0), neq=0, outfile=Nothing, verbosity=:silent, brancher=stochastic_reconfiguration!, branchtime=10)
+function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng=MersenneTwister(0), neq=0, outfile=Nothing, verbosity=:silent, brancher=stochastic_reconfiguration!, branchtime=10, dmc=true)
     nwalkers = length(fat_walkers)
     trial_energy = eref
 
@@ -65,7 +65,11 @@ function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng
                 s′ = eref - el′
                 exponent = 0.5 * τ * (s + s′)
 
-                #walker.weight *= exp(exponent)
+                if dmc
+                    walker.weight *= exp(exponent)
+                else
+                    walker.weight = 1.0
+                end
 
                 local_energy_ensemble[i] = el′
                 weight_ensemble[i] = walker.weight
@@ -76,7 +80,6 @@ function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng
                 # may not be equal to x_new
                 if j > neq
                     accumulate_observables!(fwalker, model, eref, x′)
-                    #accumulate_observables!(fwalker, model, energy_estimate[j-neq+1], x′)
                 end
 
             end
@@ -110,11 +113,6 @@ function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng
         block_weight = mean(block_weight)
         block_vmc_energy = mean(block_vmc_energy)
 
-        # reset weights every block
-        #for walker in fat_walkers
-        #    walker.walker.weight = 1.0
-        #end
-
         if j <= neq
             eref = energy_estimate[1] - log(block_weight)
         end
@@ -132,8 +130,6 @@ function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng
        
             error_estimate[n+1] = sqrt(variance_estimate[n+1] / n)                
 
-            #eref = energy_estimate[n+1] - log(block_weight)
-            #eref = 0.5 * (eref + energy_estimate[n+1])
             eref = energy_estimate[n+1] - log(block_weight)
 
         end

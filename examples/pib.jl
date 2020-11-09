@@ -20,7 +20,7 @@ hamiltonian_recompute′(ψ, x) = -0.5*ψ.laplacian(x)
 include("forceutil.jl")
 
 # DMC setting
-τ = 1e-3
+τ = 1e-2
 nwalkers = 1
 num_blocks = 5000
 steps_per_block = trunc(Int64, 1/τ)
@@ -132,10 +132,8 @@ energies, errors = QuantumMonteCarlo.run_dmc!(
     eref,
     rng=rng, 
     neq=neq, 
-    #brancher=stochastic_reconfiguration_pyqmc!,
-    brancher=no_brancher!,
-    outfile="pib.hdf5", #ARGS[1],
+    brancher=stochastic_reconfiguration_pyqmc!,
+    outfile="pib.hdf5",
     verbosity=:loud,
     branchtime=steps_per_block ÷ 10,
-    #branchtime=5,
 );

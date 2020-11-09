@@ -72,38 +72,6 @@ function local_energy_gradient(fwalker, model, eref, x′, ψt′, τ; warp=fals
     return ∇ₐel
 end
 
-function branching_factor_gradient(fwalker, model, eref, x′, ψt′, τ; warp=false)
-
-    x = fwalker.walker.configuration_old
-    x′ = fwalker.walker.configuration
-
-    ψ = model.wave_function
-
-    el(r) = model.hamiltonian_recompute(ψ, r) / ψ.value(r)
-    els(r) = hamiltonian_recompute′(ψt′, r) / ψt′.value(r)
-
-    # branching factors, for primary and secondary geometry
-    s(r) = eref - el(r)
-    ss(r) = eref - els(r)
-
-    S(r′, r) = 0.5 * τ * (s(r) + s(r′))
-    Ss(r′, r) = 0.5 * τ * (ss(r) + ss(r′))
-
-    # perform warp
-    if warp
-        x̅, _ = node_warp(x, ψ.value(x), ψ.gradient(x), ψt′.value(x), ψt′.gradient(x), τ)
-        x̅′, _ = node_warp(x′, ψ.value(x′), ψ.gradient(x′), ψt′.value(x′), ψt′.gradient(x′), τ)
-    else
-        x̅ = x
-        x̅′ = x′
-    end
-
-    deriv = (Ss(x̅′, x̅) - S(x′, x)) / da
-
-    return deriv
-
-end
-
 function greens_function_gradient(fwalker, model, eref, x′, ψt′, τ; usepq=false, warp=false)
     walker = fwalker.walker
     x = walker.configuration_old
@@ -123,9 +91,6 @@ function greens_function_gradient(fwalker, model, eref, x′, ψt′, τ; usepq=
     ψnew = ψ.value(x′)
     ψnew′ = ψt′.value(x′)
 
-    el(r) = model.hamiltonian_recompute(ψ, r) / ψ.value(r)
-    els(r) = hamiltonian_recompute′(ψt′, r) / ψt′.value(r)
-
     # drift velocity
     v(r) = ψ.gradient(r) / ψ.value(r)
     vs(r) = ψt′.gradient(r) / ψt′.value(r)
@@ -133,16 +98,6 @@ function greens_function_gradient(fwalker, model, eref, x′, ψt′, τ; usepq=
     # drift-diffusion greens function
     t(r′, r) = exp(-norm(r′ - r - v(r)*τ)^2 / 2τ)
     ts(r′, r) = exp(-norm(r′ - r - vs(r)*τ)^2 / 2τ)
-
-    # branching factors
-    s(r′, r) = eref - 0.5(el(r) + el(r′))
-    ss(r′, r) = eref - 0.5(els(r) + els(r′))
-
-    # full greens function
-    g(r′, r) = t(r′, r) * exp(τ * s(r′, r))
-    gs(r′, r) = ts(r′, r) * exp(τ * ss(r′, r))
-    gb(r′, r) = exp(τ * s(r′, r))
-    gbs(r′, r) = exp(τ * ss(r′, r))
 
     # acceptance and rejection probabilities.
     # The factor at the end ensures that p = 0 when the move x -> x′
@@ -162,9 +117,9 @@ function greens_function_gradient(fwalker, model, eref, x′, ψt′, τ; usepq=
     end
 
     if usepq
-        deriv = (log(ps(x̅′, x̅) * gs(x̅′, x̅) + qs(x̅′, x̅)) - log(p(x′, x) * g(x′, x) + q(x′, x))) / da
+        deriv = (log(ps(x̅′, x̅) * ts(x̅′, x̅) + qs(x̅′, x̅)) - log(p(x′, x) * t(x′, x) + q(x′, x))) / da
     else
-        deriv = accepted ? (log(gs(x̅′, x̅)) - log(g(x′, x))) / da : 0.0
+        deriv = accepted ? (log(ts(x̅′, x̅)) - log(t(x′, x))) / da : 0.0
     end
 
     return deriv
