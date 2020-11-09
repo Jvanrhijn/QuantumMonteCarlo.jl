@@ -57,23 +57,21 @@ function local_energy_gradient(fwalker, model, eref, x′, ψt′, τ; warp=fals
 
     local_e(x) = model.hamiltonian_recompute(ψ, x) / ψ.value(x)
 
-    el = model.hamiltonian_recompute(ψ, x) / ψ.value(x)
-    el′ = hamiltonian_recompute′(ψt′, x) / ψt′.value(x)
-
-    dx = 1e-5
-    ∂ₓel = (local_e(x .+ dx) - local_e(x .- dx)) / 2dx
 
     if warp
         x̅, _ = node_warp(x, ψ.value(x), ∇ψ(x), ψ′.value(x), ∇ψ′(x), τ)
-        ∂ₐx̅ = (x̅ - x)[1] / da
     else
-        ∂ₐx̅ = 0
+        x̅ = x
     end
+
+    el = model.hamiltonian_recompute(ψ, x) / ψ.value(x)
+    el′ = hamiltonian_recompute′(ψt′, x̅) / ψt′.value(x̅)
     
     ∇ₐel = (el′ - el) / da
     #println("$deriv")
 
-    return ∇ₐel + ∂ₐx̅ * ∂ₓel
+    #return ∇ₐel + ∂ₐx̅ * ∂ₓel
+    return ∇ₐel
 end
 
 function branching_factor_gradient(fwalker, model, eref, x′, ψt′, τ; warp=false)
@@ -151,9 +149,9 @@ function greens_function_gradient(fwalker, model, eref, x′, ψt′, τ; usepq=
     # acceptance and rejection probabilities.
     # The factor at the end ensures that p = 0 when the move x -> x′
     # crosses a node.
-    p(r′, r) = min(1, (ψ.value(r′) / ψ.value(r))^2 * t(r, r′) / t(r′, r)) * Float64(sign(ψ.value(r′)) == sign(ψ.value(r)))
+    p(r′, r) = min(1, (ψ.value(r′) / ψ.value(r))^2 * t(r, r′) / t(r′, r)) #* Float64(sign(ψ.value(r′)) == sign(ψ.value(r)))
     q(r′, r) = 1 - p(r′, r)
-    ps(r′, r) = min(1, (ψt′.value(r′) / ψt′.value(r))^2 * ts(r, r′) / ts(r′, r)) * Float64(sign(ψt′.value(r)) == sign(ψt′.value(r′)))
+    ps(r′, r) = min(1, (ψt′.value(r′) / ψt′.value(r))^2 * ts(r, r′) / ts(r′, r)) # * Float64(sign(ψt′.value(r)) == sign(ψt′.value(r′)))
     qs(r′, r) = 1 - ps(r′, r)
 
     # perform warp
@@ -165,10 +163,48 @@ function greens_function_gradient(fwalker, model, eref, x′, ψt′, τ; usepq=
         x̅′ = x′
     end
 
+    ψpib_a(a) = a[1]^2 - x[1]^2
+    ψpib_a′(a) = a[1]^2 - x′[1]^2
+    vpib_a(a) = -2x / ψpib_a(a)
+    vpib_a′(a) = -2x′ / ψpib_a′(a)
+    t_up_a(a) = exp(-1/2τ * norm(x - x′ - τ * vpib_a′(a))^2)
+    t_down_a(a) = exp(-1/2τ * norm(x′ - x - τ * vpib_a(a))^2)
+    b(a) = exp(τ * (eref - 0.5(1/ψpib_a(a) + 1/ψpib_a′(a))))
+    bstay(a) = exp(τ * (eref - 0.5(1/ψpib_a(a) + 1/ψpib_a(a))))
+    ppib(a) = min(1, ψpib_a′(a)^2 / ψpib_a(a)^2 * t_up_a(a) / t_down_a(a))
+    qpib(a) = 1 - ppib(a)
+    gpib(a) = t_down_a(a) * b(a)
+    ln_thing(a) = log(ppib(a) * gpib(a) + qpib(a) * bstay(a))
+
+
     if usepq
-        deriv = (log(ps(x̅′, x̅) * gs(x̅′, x̅) + qs(x̅′, x̅) * gbs(x̅, x̅)) - log(p(x′, x) * g(x′, x) + q(x′, x) * gb(x, x))) / da
+        #deriv = (log(ps(x̅′, x̅) * gs(x̅′, x̅) + qs(x̅′, x̅) * gbs(x̅, x̅)) - log(p(x′, x) * g(x′, x) + q(x′, x) * gb(x, x))) / da
+        #deriv = (log(ps(x̅′, x̅) * ts(x̅′, x̅) + qs(x̅′, x̅)) - log(p(x′, x) * t(x′, x) + q(x′, x))) / da
+        deriv = accepted ? (log(ps(x̅′, x̅) * ts(x̅′, x̅) + qs(x̅′, x̅)) - log(p(x′, x) * t(x′, x) + q(x′, x))) / da : 0.0
+
+        #if !accepted
+        #    println("$deriv      $fd_deriv")
+        #end
+        #asymptotic_deriv = (ps(x̅′, x̅) / qs(x̅′, x̅) * ts(x̅′, x̅) - p(x′, x) / q(x′, x) * t(x′, x)) / da
+        #δp(r′, r) = p(r′, r) - 1
+        #δps(r′, r) = ps(r′, r) - 1
+        #deviation = (δps(x̅′, x̅) + (1 - ps(x̅′, x̅)) / ps(x̅′, x̅) / ts(x̅′, x̅) - δp(x′, x) - (1 - p(x′, x)) / p(x′, x) / t(x′, x)) / da
+        #if node_reject
+        #    println("warp: $warp       $deriv    $deviation")
+        #end
     else
-        deriv = accepted ? (log(gs(x̅′, x̅)) - log(g(x′, x))) / da : τ * (ss(x̅′, x̅) - s(x′, x)) / da
+        #deriv = accepted ? (log(gs(x̅′, x̅)) - log(g(x′, x))) / da : τ * (ss(x̅′, x̅) - s(x′, x)) / da
+        #deriv = accepted ? ForwardDiff.gradient(a -> log(gpib(a)), [1])[1] : ForwardDiff.gradient(a -> log(bstay(a)), [1])[1]
+        #deriv = accepted ? ForwardDiff.gradient(a -> log(t_down_a(a)), [1])[1] : 0.0
+        #deriv = accepted ? (log(ts(x̅′, x̅)) - log(t(x′, x))) / da : 0.0
+        dx = 1e-5
+        ∂ₓlnT′ = (log(t(x′ .+ dx, x)) - log(t(x′ .- dx, x))) / 2dx
+        ∂ₓlnT = (log(t(x′, x .+ dx)) - log(t(x′, x .- dx))) / 2dx
+        ∂ₐx̅ = (x̅ - x) / da
+        ∂ₐx̅′ = (x̅′ - x′) / da
+        #deriv = (log(ts(x̅′, x̅)) - log(t(x′, x))) / da + 2(log(ψt′.value(x̅)) - log(ψ.value(x))) / da
+        deriv = accepted ? (log(ts(x̅′, x̅)) - log(t(x′, x))) / da : 0.0
+        #deriv = accepted ? ForwardDiff.gradient(a -> log(t_down_a(a)), [1])[1] + ∂ₓlnT′ * ∂ₐx̅′[1] + ∂ₓlnT * ∂ₐx̅[1] : 0.0
     end
 
     return deriv
@@ -180,6 +216,8 @@ function jacobian_gradient_previous(fwalker, model, eref, x′, ψt′,  τ)
 
     x = walker.configuration_old
 
+    accepted = x != walker.configuration
+
     ψ = model.wave_function.value(x)
     ∇ψ = model.wave_function.gradient(x)
 
@@ -189,7 +227,7 @@ function jacobian_gradient_previous(fwalker, model, eref, x′, ψt′,  τ)
     #x̅, jac = node_warp(x, ψ, ∇ψ, ψ′, ∇ψ′, τ)
     x̅, jac = node_warp_exact_jacobian(x, model.wave_function, ψt′, τ)
 
-    return log(abs(jac)) / da
+    return accepted ? log(abs(jac)) / da : 0.0
 end
 
 function jacobian_gradient_current(fwalker, model, eref, x′, ψt′,  τ)

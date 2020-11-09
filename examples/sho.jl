@@ -23,9 +23,9 @@ hamiltonian_recompute′(ψ, x) = -0.5*ψ.laplacian(x) + 0.5 * a′^2 * norm(x)^
 include("forceutil.jl")
 
 # DMC settings
-#τ = 1e-2
-τ = parse(Float64, ARGS[2])
-nwalkers = 10
+τ = 1e-3
+#τ = parse(Float64, ARGS[2])
+nwalkers = 1
 num_blocks = 1000
 steps_per_block = trunc(Int64, 1/τ)
 neq = 10
@@ -137,9 +137,10 @@ energies, errors = QuantumMonteCarlo.run_dmc!(
     eref,
     rng=rng, 
     neq=neq, 
-    brancher=stochastic_reconfiguration_pyqmc!,
-    #outfile="sho.hdf5",
-    outfile=ARGS[1],
+    #brancher=stochastic_reconfiguration_pyqmc!,
+    brancher=no_brancher!,
+    outfile="sho.hdf5",
+    #outfile=ARGS[1],
     verbosity=:loud,
     branchtime=steps_per_block ÷ 10,
 );
