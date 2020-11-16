@@ -7,7 +7,7 @@ using Formatting
 using Dates
 
 
-function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng=MersenneTwister(0), neq=0, outfile=Nothing, verbosity=:silent, brancher=stochastic_reconfiguration!, branchtime=10, dmc=true)
+function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng=MersenneTwister(0), neq=0, outfile=Nothing, verbosity=:silent, brancher=stochastic_reconfiguration!, branchtime=10, dmc=true, accept_reject=DiffuseAcceptReject)
     nwalkers = length(fat_walkers)
     trial_energy = eref
 
@@ -49,15 +49,15 @@ function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng
                 el = model.hamiltonian(walker.ψstatus, walker.configuration) / walker.ψstatus.value
 
                 # perform drift-diffuse step
-                move_walker!(walker, τ, model.wave_function, rng)
+                accept_reject.move!(walker, τ, model.wave_function, rng)
 
                 x′ = deepcopy(walker.configuration)
 
-                p = compute_acceptance!(walker, τ)
+                p = accept_reject.compute_acceptance!(walker, τ)
                 q = 1 - p
 
                 # accept or reject move
-                accept_move!(walker, p, rng)
+                accept_reject.accept_move!(walker, p, rng)
 
                 el′ = model.hamiltonian(walker.ψstatus, walker.configuration) / walker.ψstatus.value
 

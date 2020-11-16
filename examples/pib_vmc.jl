@@ -20,10 +20,10 @@ hamiltonian_recompute′(ψ, x) = -0.5*ψ.laplacian(x)
 include("forceutil_vmc.jl")
 
 # VMC settings
-τ = 1e-2
+τ = 0.01
 nwalkers = 1
-num_blocks = 15000
-steps_per_block = trunc(Int64, 1/τ)
+num_blocks = 4000
+steps_per_block = trunc(Int64, 10/τ)
 neq = num_blocks ÷ 10
 lag = trunc(Int64, steps_per_block)
 eref = 5.0/(2a)^2
@@ -114,4 +114,5 @@ energies, errors = QuantumMonteCarlo.run_vmc!(
     neq=neq, 
     outfile="pib_vmc.hdf5",
     verbosity=:loud,
+    accept_reject=BoxAcceptReject,
 );

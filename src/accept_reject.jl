@@ -3,7 +3,7 @@ using LinearAlgebra
 using Distributions
 
 
-function move_walker!(walker, τ, ψ, rng::AbstractRNG)
+function diffuse_walker!(walker, τ, ψ, rng::AbstractRNG)
     x = walker.configuration
 
     ψval = walker.ψstatus.value
@@ -28,7 +28,7 @@ function move_walker!(walker, τ, ψ, rng::AbstractRNG)
     walker.ψstatus.laplacian = ψ.laplacian(x′)
 end
 
-function compute_acceptance!(walker, τ)
+function diffuse_compute_acceptance!(walker, τ)
     x = walker.configuration_old
     x′ = walker.configuration
     ψ = walker.ψstatus_old.value
@@ -71,3 +71,38 @@ function accept_move!(walker, p, rng::AbstractRNG)
         walker.ψstatus = deepcopy(walker.ψstatus_old)
     end
 end
+
+function box_mover!(walker, τ, ψ, rng::AbstractRNG)
+    x = walker.configuration
+
+    x′ = x .+ rand(rng, Uniform(-0.5τ, 0.5τ), size(x))
+
+    # Update the walker with this new configuration
+    walker.configuration_old .= deepcopy(x)
+    walker.ψstatus_old = deepcopy(walker.ψstatus)
+
+    walker.configuration .= x′
+    walker.ψstatus.value = ψ.value(x′)
+    walker.ψstatus.gradient .= ψ.gradient(x′)
+    walker.ψstatus.laplacian = ψ.laplacian(x′)
+end
+
+function box_compute_acceptance!(walker, τ)
+    ψ = walker.ψstatus_old.value
+    ψ′ = walker.ψstatus.value
+
+    ratio = (ψ′ / ψ)^2
+
+    p = min(1, ratio)
+
+    return sign(ψ) == sign(ψ′) ? p : 0.0
+end
+
+struct AcceptReject
+    move!
+    compute_acceptance!
+    accept_move!
+end
+
+DiffuseAcceptReject = AcceptReject(diffuse_walker!, diffuse_compute_acceptance!, accept_move!)
+BoxAcceptReject = AcceptReject(box_mover!, box_compute_acceptance!, accept_move!)
