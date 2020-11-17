@@ -10,7 +10,8 @@ function diffuse_walker!(walker, τ, ψ, rng::AbstractRNG)
     ∇ψ = walker.ψstatus.gradient
     ∇²ψ = walker.ψstatus.laplacian
 
-    v = ∇ψ / ψval
+    #v = ∇ψ / ψval
+    v = cutoff_velocity(∇ψ / ψval, τ)
     
     # Move walker to x′ according to Langevin Itô diffusion
     # expression taken from https://en.wikipedia.org/wiki/Metropolis-adjusted_Langevin_algorithm
@@ -40,8 +41,10 @@ function diffuse_compute_acceptance!(walker, τ)
     # probability distribution ratio
     ratio = ψ′^2 / ψ^2
 
-    v = ∇ψ / ψ
-    v′ = ∇ψ′ / ψ′
+    v = cutoff_velocity(∇ψ / ψ, τ)
+    v′ = cutoff_velocity(∇ψ′ / ψ′, τ)
+    #v = ∇ψ / ψ
+    #v′ = ∇ψ′ / ψ′
 
     # MALA: compute the acceptance probability p
     # expression taken from https://en.wikipedia.org/wiki/Metropolis-adjusted_Langevin_algorithm

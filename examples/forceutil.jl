@@ -162,9 +162,15 @@ function greens_function_gradient(fwalker, model, eref, x′, ψt′, τ; usepq=
     end
 
     if usepq
-        deriv = (log(ps(x̅′, x̅) * gs(x̅′, x̅) + qs(x̅′, x̅)) - log(p(x′, x) * g(x′, x) + q(x′, x))) / da
+        if accepted
+            deriv = (log(ps(x̅′, x̅) * ts(x̅′, x̅)) - log(p(x′, x) * t(x′, x))) / da 
+        elseif node_reject
+             deriv = (log(ts(x̅′, x̅)) - log(t(x′, x))) / da
+        else
+             deriv = (log(qs(x̅′, x̅) * ts(x̅′, x̅)) - log(q(x̅′, x̅) * t(x′, x))) / da
+        end
     else
-        deriv = accepted ? (log(gs(x̅′, x̅)) - log(g(x′, x))) / da : 0.0
+        deriv = accepted ? (log(ts(x̅′, x̅)) - log(t(x′, x))) / da : 0.0
     end
 
     return deriv

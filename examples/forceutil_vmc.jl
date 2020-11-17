@@ -92,8 +92,10 @@ function greens_function_gradient(fwalker, model, eref, x′, ψt′, τ; usepq=
     ψnew′ = ψt′.value(x′)
 
     # drift velocity
-    v(r) = ψ.gradient(r) / ψ.value(r)
-    vs(r) = ψt′.gradient(r) / ψt′.value(r)
+    #v(r) = ψ.gradient(r) / ψ.value(r)
+    #vs(r) = ψt′.gradient(r) / ψt′.value(r)
+    v(r) = QuantumMonteCarlo.cutoff_velocity(ψ.gradient(r) / ψ.value(r), τ)
+    vs(r) = QuantumMonteCarlo.cutoff_velocity(ψt′.gradient(r) / ψt′.value(r), τ)
 
     # drift-diffusion greens function
     t(r′, r) = exp(-norm(r′ - r - v(r)*τ)^2 / 2τ)
@@ -117,7 +119,13 @@ function greens_function_gradient(fwalker, model, eref, x′, ψt′, τ; usepq=
     end
 
     if usepq
-        deriv = accepted ? (log(ps(x̅′, x̅) * ts(x̅′, x̅)) - log(p(x′, x) * t(x′, x))) / da : (log(qs(x̅′, x̅) * ts(x̅′, x̅)) - log(q(x′, x) * t(x′, x))) / da 
+        if accepted
+            deriv = (log(ps(x̅′, x̅) * ts(x̅′, x̅)) - log(p(x′, x) * t(x′, x))) / da 
+        elseif node_reject
+             deriv = (log(ts(x̅′, x̅)) - log(t(x′, x))) / da
+        else
+             deriv = (log(qs(x̅′, x̅) * ts(x̅′, x̅)) - log(q(x̅′, x̅) * t(x′, x))) / da
+        end
     else
         deriv = accepted ? (log(ts(x̅′, x̅)) - log(t(x′, x))) / da : 0.0
     end
@@ -159,6 +167,41 @@ function jacobian_gradient_current(fwalker, model, eref, x′, ψt′,  τ)
 
     #x̅, jac = node_warp(x, ψ, ∇ψ, ψ′, ∇ψ′, τ)
     x̅, jac = node_warp_exact_jacobian(x, model.wave_function, ψt′, τ)
+
+    return log(abs(jac)) / da
+end
+
+function jacobian_gradient_previous_approx(fwalker, model, eref, x′, ψt′,  τ)
+    walker = fwalker.walker
+
+    x = walker.configuration_old
+
+    accepted = x != walker.configuration
+
+    ψ = model.wave_function.value(x)
+    ∇ψ = model.wave_function.gradient(x)
+
+    ψ′ = ψt′.value(x)
+    ∇ψ′ = ψt′.gradient(x)
+
+    x̅, jac = node_warp(x, ψ, ∇ψ, ψ′, ∇ψ′, τ)
+
+    return log(abs(jac)) / da
+end
+
+function jacobian_gradient_current_approx(fwalker, model, eref, x′, ψt′,  τ)
+    walker = fwalker.walker
+
+    #x = walker.configuration_old
+    x = walker.configuration
+
+    ψ = model.wave_function.value(x)
+    ∇ψ = model.wave_function.gradient(x)
+
+    ψ′ = ψt′.value(x)
+    ∇ψ′ = ψt′.gradient(x)
+
+    x̅, jac = node_warp(x, ψ, ∇ψ, ψ′, ∇ψ′, τ)
 
     return log(abs(jac)) / da
 end
