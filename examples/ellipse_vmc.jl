@@ -17,39 +17,42 @@ hamiltonian_recompute(ψ, x) = -0.5*ψ.laplacian(x)
 hamiltonian′(ψstatus, x) = -0.5*ψstatus.laplacian
 hamiltonian_recompute′(ψ, x) = -0.5*ψ.laplacian(x)
 
-include("forceutil.jl")
+include("forceutil_vmc.jl")
 
-# DMC setting
-τ = 0.5e-2
+# VMC settings
+τ = 1e-1
 nwalkers = 1
-num_blocks = 20_000
-steps_per_block = trunc(Int64, 1/τ)
+num_blocks = 32000
+steps_per_block = max(100, trunc(Int64, 1/τ))
 neq = num_blocks ÷ 10
 lag = trunc(Int64, steps_per_block)
 eref = 5.0/(2a)^2
 
+α(a) = a*cosh(1)
+β(a) = a*sinh(1)
+
 # Trial wave function
-#function ψpib(x::Array{Float64})
 function ψpib(x::AbstractArray)
-    a^2 - x[1]^2
+    r = (x[1] / α(a))^2 + (x[2] / β(a))^2
+    return 1 - r
 end
 
-#function ψpib′(x::Array{Float64})
 function ψpib′(x::AbstractArray)
     a′ = a + da
-    (a′)^2 - x[1]^2
+    r = (x[1] / α(a′))^2 + (x[2] / β(a′))^2
+    return 1 - r
 end
 
 ψtrial = WaveFunction(
     ψpib,
-    x -> -2x,
-    x -> -2
+    x -> -2 * [x[1]/α(a)^2, x[2]/β(a)^2],
+    x -> -2(1/α(a)^2 + 1/β(a)^2),
 )
 
 ψtrial′ = WaveFunction(
     ψpib′,
-    x -> -2x,
-    x -> -2
+    x -> -2 * [x[1]/α(a + da)^2, x[2]/β(a + da)^2],
+    x -> -2(1/α(a + da)^2 + 1/β(a + da)^2),
 )
 
 model = Model(
@@ -58,8 +61,6 @@ model = Model(
     ψtrial,
 )
 
-# TODO: fix the time spent in iterating over dicts
-# Observables needed for force computation
 observables = OrderedDict(
     # Local energy
     "Local energy" => local_energy,
@@ -70,70 +71,58 @@ observables = OrderedDict(
     "grad log psi" => (fwalker, model, eref, xp) -> log_psi_gradient(fwalker, model, eref, xp, ψtrial′, τ; warp=false),
     "grad log psi (warp)" => (fwalker, model, eref, xp) -> log_psi_gradient(fwalker, model, eref, xp, ψtrial′, τ; warp=true),
     # S, T with and without warp
-    "grad s" => (fwalker, model, eref, xp) -> branching_factor_gradient(fwalker, model, eref, xp, ψtrial′, τ; warp=false),
     "grad g" => (fwalker, model, eref, xp) -> greens_function_gradient(fwalker, model, eref, xp, ψtrial′, τ; usepq=false, warp=false),
-    "grad s (warp)" => (fwalker, model, eref, xp) -> branching_factor_gradient(fwalker, model, eref, xp, ψtrial′, τ; warp=true),
     "grad g (warp)" => (fwalker, model, eref, xp) -> greens_function_gradient(fwalker, model, eref, xp, ψtrial′, τ; usepq=false, warp=true),
     # S, T with p and q derivatives
-    "grad s (p/q)" => (fwalker, model, eref, xp) -> branching_factor_gradient(fwalker, model, eref, xp, ψtrial′, τ; warp=false),
     "grad g (p/q)" => (fwalker, model, eref, xp) -> greens_function_gradient(fwalker, model, eref, xp, ψtrial′, τ; usepq=true, warp=false),
-    "grad s (warp, p/q)" => (fwalker, model, eref, xp) -> branching_factor_gradient(fwalker, model, eref, xp, ψtrial′, τ; warp=true),
     "grad g (warp, p/q)" => (fwalker, model, eref, xp) -> greens_function_gradient(fwalker, model, eref, xp, ψtrial′, τ; usepq=true, warp=true),
     # Jacobians
     "grad log j" => (fwalker, model, eref, xp) -> jacobian_gradient_current(fwalker, model, eref, xp, ψtrial′, τ),
     "sum grad log j" => (fwalker, model, eref, xp) -> jacobian_gradient_previous(fwalker, model, eref, xp, ψtrial′, τ),
+    # Jacobians approximate
+    "grad log j approx" => (fwalker, model, eref, xp) -> jacobian_gradient_current_approx(fwalker, model, eref, xp, ψtrial′, τ),
+    "sum grad log j approx" => (fwalker, model, eref, xp) -> jacobian_gradient_previous_approx(fwalker, model, eref, xp, ψtrial′, τ),
 )
 
 rng = MersenneTwister(16224267)
 
 # create "Fat" walkers
-walkers = QuantumMonteCarlo.generate_walkers(nwalkers, ψtrial, rng, Uniform(-a, a), 1)
+walkers = QuantumMonteCarlo.generate_walkers(nwalkers, ψtrial, rng, Uniform(-0.5, 0.5), 2)
 
 fat_walkers = [QuantumMonteCarlo.FatWalker(
     walker, 
     observables, 
     OrderedDict(
-        "grad s" => CircularBuffer(lag),
         "grad g" => CircularBuffer(lag),
-        "grad s (warp)" => CircularBuffer(lag),
         "grad g (warp)" => CircularBuffer(lag),
-        "grad s (p/q)" => CircularBuffer(lag),
         "grad g (p/q)" => CircularBuffer(lag),
-        "grad s (warp, p/q)" => CircularBuffer(lag),
         "grad g (warp, p/q)" => CircularBuffer(lag),
         "sum grad log j" => CircularBuffer(lag),
     ),
     [
         ("Local energy", "grad log psi"),
         ("Local energy", "grad log psi (warp)"),
-        ("Local energy", "grad s"),
         ("Local energy", "grad g"),
-        ("Local energy", "grad s (warp)"),
         ("Local energy", "grad g (warp)"),
-        ("Local energy", "grad s (p/q)"),
         ("Local energy", "grad g (p/q)"),
-        ("Local energy", "grad s (warp, p/q)"),
         ("Local energy", "grad g (warp, p/q)"),
         ("Local energy", "grad log j"),
         ("Local energy", "sum grad log j"),
+        ("Local energy", "grad log j approx"),
+        ("Local energy", "sum grad log j approx"),
     ]
     ) for walker in walkers
 ]
 
-#fat_walkers = [QuantumMonteCarlo.FatWalker(walker) for walker in walkers]
-
-### Actually run DMC
-energies, errors = QuantumMonteCarlo.run_dmc!(
+energies, errors = QuantumMonteCarlo.run_vmc!(
     model, 
     fat_walkers, 
     τ, 
     num_blocks, 
     steps_per_block, 
-    eref,
     rng=rng, 
     neq=neq, 
-    brancher=stochastic_reconfiguration_pyqmc!,
-    outfile="pib.hdf5",
+    outfile="ellipse_vmc.hdf5",
     verbosity=:loud,
-    branchtime=steps_per_block ÷ 10,
+    #accept_reject=BoxAcceptReject,
 );

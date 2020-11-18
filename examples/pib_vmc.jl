@@ -8,7 +8,7 @@ using StatsBase
 using QuantumMonteCarlo
 
 # Force computation settings and import
-a = 1.0
+a = 1
 da = 1e-5
 
 # Setting up the hamiltonian
@@ -20,11 +20,11 @@ hamiltonian_recompute′(ψ, x) = -0.5*ψ.laplacian(x)
 include("forceutil_vmc.jl")
 
 # VMC settings
-τ = 1e-2
+τ = 1e-1
 nwalkers = 1
 num_blocks = 16000
-steps_per_block = trunc(Int64, 1/τ)
-neq = num_blocks ÷ 10
+steps_per_block = max(10, trunc(Int64, 1/τ))
+neq = num_blocks ÷ 10 
 lag = trunc(Int64, steps_per_block)
 eref = 5.0/(2a)^2
 
@@ -75,8 +75,8 @@ observables = OrderedDict(
     "grad log j" => (fwalker, model, eref, xp) -> jacobian_gradient_current(fwalker, model, eref, xp, ψtrial′, τ),
     "sum grad log j" => (fwalker, model, eref, xp) -> jacobian_gradient_previous(fwalker, model, eref, xp, ψtrial′, τ),
     # Jacobians approximate
-    "grad log j approx" => (fwalker, model, eref, xp) -> jacobian_gradient_current(fwalker, model, eref, xp, ψtrial′, τ),
-    "sum grad log j approx" => (fwalker, model, eref, xp) -> jacobian_gradient_previous(fwalker, model, eref, xp, ψtrial′, τ),
+    "grad log j approx" => (fwalker, model, eref, xp) -> jacobian_gradient_current_approx(fwalker, model, eref, xp, ψtrial′, τ),
+    "sum grad log j approx" => (fwalker, model, eref, xp) -> jacobian_gradient_previous_approx(fwalker, model, eref, xp, ψtrial′, τ),
 )
 
 rng = MersenneTwister(16224267)
