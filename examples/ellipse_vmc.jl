@@ -8,7 +8,7 @@ using StatsBase
 using QuantumMonteCarlo
 
 # Force computation settings and import
-a = 1.001
+a = 1.00
 da = 1e-5
 
 # Setting up the hamiltonian
