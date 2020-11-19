@@ -229,6 +229,41 @@ function jacobian_gradient_current(fwalker, model, eref, x′, ψt′,  τ)
     return log(abs(jac)) / da
 end
 
+function jacobian_gradient_previous_approx(fwalker, model, eref, x′, ψt′,  τ)
+    walker = fwalker.walker
+
+    x = walker.configuration_old
+
+    accepted = x != walker.configuration
+
+    ψ = model.wave_function.value(x)
+    ∇ψ = model.wave_function.gradient(x)
+
+    ψ′ = ψt′.value(x)
+    ∇ψ′ = ψt′.gradient(x)
+
+    x̅, jac = node_warp(x, ψ, ∇ψ, ψ′, ∇ψ′, τ)
+
+    return log(abs(jac)) / da
+end
+
+function jacobian_gradient_current_approx(fwalker, model, eref, x′, ψt′,  τ)
+    walker = fwalker.walker
+
+    #x = walker.configuration_old
+    x = walker.configuration
+
+    ψ = model.wave_function.value(x)
+    ∇ψ = model.wave_function.gradient(x)
+
+    ψ′ = ψt′.value(x)
+    ∇ψ′ = ψt′.gradient(x)
+
+    x̅, jac = node_warp(x, ψ, ∇ψ, ψ′, ∇ψ′, τ)
+
+    return log(abs(jac)) / da
+end
+
 function log_psi_gradient(fwalker, model, eref, x′, ψt′, τ; warp=false)
     walker = fwalker.walker
 

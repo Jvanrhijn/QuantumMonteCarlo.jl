@@ -21,7 +21,7 @@ function node_warp(x, ψ, ∇ψ, ψ′, ∇ψ′, τ)
 
     n′ = ∇ψ′ / norm(∇ψ′)
     n = ∇ψ / norm(∇ψ)
-    u, uderiv = cutoff_tanh(d; a=0.01)
+    u, uderiv = cutoff_tanh(d; a=τ)
     x̅ = x .+ (d - d′) * u * sign(ψ′) * n′
    
     # approximate jacobian
@@ -35,7 +35,7 @@ function node_warp_exact_jacobian(x, ψ, ψ′, τ)
     d′(y) = abs(ψ′.value(y)) / norm(ψ′.gradient(y))
     n′(y) = ψ′.gradient(y) / norm(ψ′.gradient(y))
 
-    warp(y::AbstractVector) = y + (d(y) - d′(y)) * n′(y) * sign(ψ′.value(y)) * cutoff_tanh(d(y), a=0.01)[1]
+    warp(y::AbstractVector) = y + (d(y) - d′(y)) * n′(y) * sign(ψ′.value(y)) * cutoff_tanh(d(y), a=τ)[1]
 
     x̅ = warp(x)
 

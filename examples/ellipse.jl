@@ -20,13 +20,13 @@ hamiltonian_recompute′(ψ, x) = -0.5*ψ.laplacian(x)
 include("forceutil.jl")
 
 # VMC settings
-τ = 0.5e-2
+τ = 1e-3
 nwalkers = 5
-num_blocks = 30000
+num_blocks = 1000
 steps_per_block = max(100, trunc(Int64, 1/τ))
 neq = num_blocks ÷ 10
 lag = trunc(Int64, steps_per_block)
-eref = 5.0/(2a)^2
+eref = 1.715
 
 α(a) = a*cosh(1)
 β(a) = a*sinh(1)
@@ -85,6 +85,8 @@ observables = OrderedDict(
     # Jacobians
     "grad log j" => (fwalker, model, eref, xp) -> jacobian_gradient_current(fwalker, model, eref, xp, ψtrial′, τ),
     "sum grad log j" => (fwalker, model, eref, xp) -> jacobian_gradient_previous(fwalker, model, eref, xp, ψtrial′, τ),
+    "grad log j approx" => (fwalker, model, eref, xp) -> jacobian_gradient_current_approx(fwalker, model, eref, xp, ψtrial′, τ),
+    "sum grad log j approx" => (fwalker, model, eref, xp) -> jacobian_gradient_previous_approx(fwalker, model, eref, xp, ψtrial′, τ),
 )
 
 rng = MersenneTwister(16224267)
@@ -105,6 +107,7 @@ fat_walkers = [QuantumMonteCarlo.FatWalker(
         "grad s (warp, p/q)" => CircularBuffer(lag),
         "grad g (warp, p/q)" => CircularBuffer(lag),
         "sum grad log j" => CircularBuffer(lag),
+        "sum grad log j approx" => CircularBuffer(lag),
     ),
     [
         ("Local energy", "grad log psi"),
@@ -119,6 +122,8 @@ fat_walkers = [QuantumMonteCarlo.FatWalker(
         ("Local energy", "grad g (warp, p/q)"),
         ("Local energy", "grad log j"),
         ("Local energy", "sum grad log j"),
+        ("Local energy", "grad log j approx"),
+        ("Local energy", "sum grad log j approx"),
     ]
     ) for walker in walkers
 ]

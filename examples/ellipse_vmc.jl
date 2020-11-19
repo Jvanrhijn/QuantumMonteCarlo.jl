@@ -8,7 +8,7 @@ using StatsBase
 using QuantumMonteCarlo
 
 # Force computation settings and import
-a = 1.0
+a = 1.001
 da = 1e-5
 
 # Setting up the hamiltonian
@@ -20,13 +20,12 @@ hamiltonian_recompute′(ψ, x) = -0.5*ψ.laplacian(x)
 include("forceutil_vmc.jl")
 
 # VMC settings
-τ = 1e-1
+τ = 1e-2
 nwalkers = 1
-num_blocks = 32000
+num_blocks = 4*16000
 steps_per_block = max(100, trunc(Int64, 1/τ))
 neq = num_blocks ÷ 10
 lag = trunc(Int64, steps_per_block)
-eref = 5.0/(2a)^2
 
 α(a) = a*cosh(1)
 β(a) = a*sinh(1)
@@ -114,6 +113,8 @@ fat_walkers = [QuantumMonteCarlo.FatWalker(
     ) for walker in walkers
 ]
 
+#fat_walkers = [QuantumMonteCarlo.FatWalker(walker) for walker in walkers]
+
 energies, errors = QuantumMonteCarlo.run_vmc!(
     model, 
     fat_walkers, 
@@ -124,5 +125,4 @@ energies, errors = QuantumMonteCarlo.run_vmc!(
     neq=neq, 
     outfile="ellipse_vmc.hdf5",
     verbosity=:loud,
-    #accept_reject=BoxAcceptReject,
 );
