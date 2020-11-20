@@ -208,7 +208,7 @@ function jacobian_gradient_previous(fwalker, model, eref, x′, ψt′,  τ)
     #x̅, jac = node_warp(x, ψ, ∇ψ, ψ′, ∇ψ′, τ)
     x̅, jac = node_warp_exact_jacobian(x, model.wave_function, ψt′, τ)
 
-    return log(abs(jac)) / da
+    return accepted ? log(abs(jac)) / da : 0.0
 end
 
 function jacobian_gradient_current(fwalker, model, eref, x′, ψt′,  τ)

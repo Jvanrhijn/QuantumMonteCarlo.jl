@@ -234,7 +234,7 @@ print(f"Total force (exact):                       {ftot_exact:.5f} +/- {ftot_ex
 print(f"Total force (exact, warp):                 {ftot_exact_warp:.5f} +/- {ftot_exact_err_warp:.5f}")
 print(f"Total force (exact, p/q):                  {ftot_exact_pq:.5f} +/- {ftot_exact_pq_err:.5f}")
 print(f"Total force (exact, warp, p/q):            {ftot_exact_pq_warp:.5f} +/- {ftot_exact_pq_err_warp:.5f}")
-print(f"Total force (exact, warp, p/q approx J):   {ftot_exact_pq_warp:.5f} +/- {ftot_exact_pq_err_warp:.5f}")
+print(f"Total force (exact, warp, p/q approx J):   {ftot_exact_pq_warp_approx:.5f} +/- {ftot_exact_pq_err_warp_approx:.5f}")
 print(f"Total force (vd):                          {ftot_vd:.5f} +/- {ftot_vd_err:.5f}")
 print(f"Total force (vd, warp):                    {ftot_vd_warp:.5f} +/- {ftot_vd_err_warp:.5f}")
 

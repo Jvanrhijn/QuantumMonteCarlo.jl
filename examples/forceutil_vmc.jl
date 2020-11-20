@@ -21,7 +21,7 @@ function node_warp(x, ψ, ∇ψ, ψ′, ∇ψ′, τ)
 
     n′ = ∇ψ′ / norm(∇ψ′)
     n = ∇ψ / norm(∇ψ)
-    u, uderiv = cutoff_tanh(d; a=τ)
+    u, uderiv = cutoff_tanh(d; a=sqrt(τ))
     x̅ = x .+ (d - d′) * u * sign(ψ′) * n′
    
     # approximate jacobian
@@ -35,7 +35,7 @@ function node_warp_exact_jacobian(x, ψ, ψ′, τ)
     d′(y) = abs(ψ′.value(y)) / norm(ψ′.gradient(y))
     n′(y) = ψ′.gradient(y) / norm(ψ′.gradient(y))
 
-    warp(y::AbstractVector) = y + (d(y) - d′(y)) * n′(y) * sign(ψ′.value(y)) * cutoff_tanh(d(y), a=τ)[1]
+    warp(y::AbstractVector) = y + (d(y) - d′(y)) * n′(y) * sign(ψ′.value(y)) * cutoff_tanh(d(y), a=sqrt(τ))[1]
 
     x̅ = warp(x)
 
@@ -101,6 +101,9 @@ function greens_function_gradient(fwalker, model, eref, x′, ψt′, τ; usepq=
     t(r′, r) = exp(-norm(r′ - r - v(r)*τ)^2 / 2τ)
     ts(r′, r) = exp(-norm(r′ - r - vs(r)*τ)^2 / 2τ)
 
+    logt(r′, r) = -norm(r′ - r - v(r)*τ)^2 / 2τ
+    logts(r′, r) = -norm(r′ - r - vs(r)*τ)^2 / 2τ
+
     # acceptance and rejection probabilities.
     # The factor at the end ensures that p = 0 when the move x -> x′
     # crosses a node.
@@ -120,14 +123,20 @@ function greens_function_gradient(fwalker, model, eref, x′, ψt′, τ; usepq=
 
     if usepq
         if accepted
-            deriv = (log(ps(x̅′, x̅) * ts(x̅′, x̅)) - log(p(x′, x) * t(x′, x))) / da 
+            deriv = log(ps(x̅′, x̅)) - log(p(x′, x))
+            deriv += logts(x̅′, x̅) - logt(x′, x)
+            deriv /= da
         elseif node_reject
-             deriv = (log(ts(x̅′, x̅)) - log(t(x′, x))) / da
+            deriv = logts(x̅′, x̅) - logt(x′, x)
+            deriv /= da
         else
-             deriv = (log(qs(x̅′, x̅) * ts(x̅′, x̅)) - log(q(x′, x) * t(x′, x))) / da
+            deriv = log(qs(x̅′, x̅)) - log(q(x′, x))
+            deriv += logts(x̅′, x̅) - logt(x′, x)
+            deriv /= da
         end
     else
-        deriv = accepted ? (log(ts(x̅′, x̅)) - log(t(x′, x))) / da : 0.0
+        deriv = accepted ? ts(x̅′, x̅) - t(x′, x) : 0.0
+        deriv /= da
     end
 
     return deriv
@@ -150,7 +159,7 @@ function jacobian_gradient_previous(fwalker, model, eref, x′, ψt′,  τ)
     #x̅, jac = node_warp(x, ψ, ∇ψ, ψ′, ∇ψ′, τ)
     x̅, jac = node_warp_exact_jacobian(x, model.wave_function, ψt′, τ)
 
-    return log(abs(jac)) / da
+    return accepted ? log(abs(jac)) / da : 0.0
 end
 
 function jacobian_gradient_current(fwalker, model, eref, x′, ψt′,  τ)
@@ -158,6 +167,8 @@ function jacobian_gradient_current(fwalker, model, eref, x′, ψt′,  τ)
 
     #x = walker.configuration_old
     x = walker.configuration
+
+    accepted = x == walker.configuration
 
     ψ = model.wave_function.value(x)
     ∇ψ = model.wave_function.gradient(x)
@@ -186,7 +197,7 @@ function jacobian_gradient_previous_approx(fwalker, model, eref, x′, ψt′,  
 
     x̅, jac = node_warp(x, ψ, ∇ψ, ψ′, ∇ψ′, τ)
 
-    return log(abs(jac)) / da
+    return accepted ? log(abs(jac)) / da : 0.0
 end
 
 function jacobian_gradient_current_approx(fwalker, model, eref, x′, ψt′,  τ)

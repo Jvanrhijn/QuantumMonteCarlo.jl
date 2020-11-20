@@ -20,9 +20,9 @@ hamiltonian_recompute′(ψ, x) = -0.5*ψ.laplacian(x)
 include("forceutil_vmc.jl")
 
 # VMC settings
-τ = 1e-2
+τ = 0.5e-1
 nwalkers = 1
-num_blocks = 4*16000
+num_blocks = 10000
 steps_per_block = max(100, trunc(Int64, 1/τ))
 neq = num_blocks ÷ 10
 lag = trunc(Int64, steps_per_block)
@@ -33,25 +33,25 @@ lag = trunc(Int64, steps_per_block)
 # Trial wave function
 function ψpib(x::AbstractArray)
     r = (x[1] / α(a))^2 + (x[2] / β(a))^2
-    return 1 - r
+    return (1 - r) / a^3
 end
 
 function ψpib′(x::AbstractArray)
     a′ = a + da
     r = (x[1] / α(a′))^2 + (x[2] / β(a′))^2
-    return 1 - r
+    return (1 - r) / a′^3
 end
 
 ψtrial = WaveFunction(
     ψpib,
-    x -> -2 * [x[1]/α(a)^2, x[2]/β(a)^2],
-    x -> -2(1/α(a)^2 + 1/β(a)^2),
+    x -> (-2 * [x[1]/α(a)^2, x[2]/β(a)^2]) / a^3,
+    x -> -2(1/α(a)^2 + 1/β(a)^2) / a^3,
 )
 
 ψtrial′ = WaveFunction(
     ψpib′,
-    x -> -2 * [x[1]/α(a + da)^2, x[2]/β(a + da)^2],
-    x -> -2(1/α(a + da)^2 + 1/β(a + da)^2),
+    x -> -2 * [x[1]/α(a + da)^2, x[2]/β(a + da)^2] / (a + da)^3,
+    x -> -2(1/α(a + da)^2 + 1/β(a + da)^2) / (a + da)^3,
 )
 
 model = Model(
@@ -86,7 +86,7 @@ observables = OrderedDict(
 rng = MersenneTwister(16224267)
 
 # create "Fat" walkers
-walkers = QuantumMonteCarlo.generate_walkers(nwalkers, ψtrial, rng, Uniform(-0.5, 0.5), 2)
+walkers = QuantumMonteCarlo.generate_walkers(nwalkers, ψtrial, rng, Uniform(-0.1, 0.1), 2)
 
 fat_walkers = [QuantumMonteCarlo.FatWalker(
     walker, 
