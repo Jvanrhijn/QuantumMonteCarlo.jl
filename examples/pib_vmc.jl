@@ -22,8 +22,8 @@ include("forceutil_vmc.jl")
 # VMC settings
 τ = 1e-1
 nwalkers = 1
-num_blocks = 16000
-steps_per_block = max(10, trunc(Int64, 1/τ))
+num_blocks = 1000
+steps_per_block = trunc(Int64, 1/τ)
 neq = num_blocks ÷ 10 
 lag = trunc(Int64, steps_per_block)
 eref = 5.0/(2a)^2
@@ -118,8 +118,7 @@ energies, errors = QuantumMonteCarlo.run_vmc!(
     steps_per_block, 
     rng=rng, 
     neq=neq, 
-    #outfile="pib_vmc.hdf5",
-    outfile="$τ.hdf5",
+    outfile="pib_vmc.hdf5",
     verbosity=:loud,
     #accept_reject=BoxAcceptReject,
 );

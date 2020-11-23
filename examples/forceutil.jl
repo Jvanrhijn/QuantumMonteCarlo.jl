@@ -127,8 +127,8 @@ function greens_function_gradient(fwalker, model, eref, x′, ψt′, τ; usepq=
     els(r) = hamiltonian_recompute′(ψt′, r) / ψt′.value(r)
 
     # drift velocity
-    #v(r) = ψ.gradient(r) / ψ.value(r)
-    #vs(r) = ψt′.gradient(r) / ψt′.value(r)
+    vbare(r) = ψ.gradient(r) / ψ.value(r)
+    vsbare(r) = ψt′.gradient(r) / ψt′.value(r)
     v(r) = QuantumMonteCarlo.cutoff_velocity(ψ.gradient(r) / ψ.value(r), τ)
     vs(r) = QuantumMonteCarlo.cutoff_velocity(ψt′.gradient(r) / ψt′.value(r), τ)
 
@@ -139,6 +139,10 @@ function greens_function_gradient(fwalker, model, eref, x′, ψt′, τ; usepq=
     # branching factors
     s(r′, r) = eref - 0.5(el(r) + el(r′))
     ss(r′, r) = eref - 0.5(els(r) + els(r′))
+
+    # velocity renorm factors
+    f(r) = norm(v(r)) / norm(vbare(r))
+    fs(r) = norm(vs(r)) / norm(vsbare(r))
 
     # full greens function
     g(r′, r) = t(r′, r) * exp(τ * s(r′, r))
@@ -167,24 +171,33 @@ function greens_function_gradient(fwalker, model, eref, x′, ψt′, τ; usepq=
         if accepted
             deriv = log(ps(x̅′, x̅)) - log(p(x′, x))
             deriv += log(ts(x̅′, x̅)) - log(t(x′, x))
-            deriv += τ * (ss(x̅′, x̅) - s(x′, x))
+            #deriv += τ * (ss(x̅′, x̅) - s(x′, x))
+            #deriv += 0.5τ * ()
+            deriv += 0.5τ * ((fs(x̅) - f(x))*(eref - el(x)) - f(x)*(els(x̅) - el(x)))
+            deriv += 0.5τ * ((fs(x̅′) - f(x′))*(eref - el(x′)) - f(x′)*(els(x̅′) - el(x′)))
             deriv /= da
             #deriv = (log(ps(x̅′, x̅) * gs(x̅′, x̅)) - log(p(x′, x) * g(x′, x))) / da 
         elseif node_reject
              #deriv = (log(gs(x̅′, x̅)) - log(g(x′, x))) / da
             deriv = log(ts(x̅′, x̅)) - log(t(x′, x))
-            deriv += τ * (ss(x̅′, x̅) - s(x′, x))
+            #deriv += τ * (ss(x̅′, x̅) - s(x′, x))
+            deriv += 0.5τ * ((fs(x̅) - f(x))*(eref - el(x)) - f(x)*(els(x̅) - el(x)))
+            deriv += 0.5τ * ((fs(x̅′) - f(x′))*(eref - el(x′)) - f(x′)*(els(x̅′) - el(x′)))
             deriv /= da
         else
              #deriv = (log(qs(x̅′, x̅) * gs(x̅′, x̅)) - log(q(x′, x) * g(x′, x))) / da
             deriv = log(qs(x̅′, x̅)) - log(q(x′, x))
             deriv += log(ts(x̅′, x̅)) - log(t(x′, x))
-            deriv += τ * (ss(x̅′, x̅) - s(x′, x))
+            #deriv += τ * (ss(x̅′, x̅) - s(x′, x))
+            deriv += 0.5τ * ((fs(x̅) - f(x))*(eref - el(x)) - f(x)*(els(x̅) - el(x)))
+            deriv += 0.5τ * ((fs(x̅′) - f(x′))*(eref - el(x′)) - f(x′)*(els(x̅′) - el(x′)))
             deriv /= da
         end
     else
         deriv = log(ts(x̅′, x̅)) - log(t(x′, x))
-        deriv += τ * (ss(x̅′, x̅) - s(x′, x))
+        #deriv += τ * (ss(x̅′, x̅) - s(x′, x))
+        deriv += 0.5τ * ((fs(x̅) - f(x))*(eref - el(x)) - f(x)*(els(x̅) - el(x)))
+        deriv += 0.5τ * ((fs(x̅′) - f(x′))*(eref - el(x′)) - f(x′)*(els(x̅′) - el(x′)))
         deriv /= da
     end
 
@@ -208,7 +221,7 @@ function jacobian_gradient_previous(fwalker, model, eref, x′, ψt′,  τ)
     #x̅, jac = node_warp(x, ψ, ∇ψ, ψ′, ∇ψ′, τ)
     x̅, jac = node_warp_exact_jacobian(x, model.wave_function, ψt′, τ)
 
-    return accepted ? log(abs(jac)) / da : 0.0
+    return log(abs(jac)) / da
 end
 
 function jacobian_gradient_current(fwalker, model, eref, x′, ψt′,  τ)

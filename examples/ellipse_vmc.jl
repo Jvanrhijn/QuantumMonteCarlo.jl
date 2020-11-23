@@ -20,10 +20,10 @@ hamiltonian_recompute′(ψ, x) = -0.5*ψ.laplacian(x)
 include("forceutil_vmc.jl")
 
 # VMC settings
-τ = 0.5e-1
+τ = 1e-1
 nwalkers = 1
-num_blocks = 10000
-steps_per_block = max(100, trunc(Int64, 1/τ))
+num_blocks = 16000
+steps_per_block = 1000
 neq = num_blocks ÷ 10
 lag = trunc(Int64, steps_per_block)
 
