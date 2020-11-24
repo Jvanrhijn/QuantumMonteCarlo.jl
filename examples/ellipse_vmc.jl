@@ -22,8 +22,8 @@ include("forceutil_vmc.jl")
 # VMC settings
 τ = 1e-1
 nwalkers = 1
-num_blocks = 16000
-steps_per_block = 1000
+num_blocks = 16*1600
+steps_per_block = 400
 neq = num_blocks ÷ 10
 lag = trunc(Int64, steps_per_block)
 

@@ -64,8 +64,10 @@ function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng
                 v = walker.ψstatus_old.gradient / walker.ψstatus_old.value
                 v′ = walker.ψstatus.gradient / walker.ψstatus.value
 
-                s = (eref - el) * norm(cutoff_velocity(v, τ)) / norm(v)
-                s′ = (eref - el′) * norm(cutoff_velocity(v′, τ)) / norm(v′)
+                ebest = j > neq ? energy_estimate[j-neq] : energy_estimate[1]
+
+                s = (eref - ebest) + (ebest - el) * norm(cutoff_velocity(v, τ)) / norm(v)
+                s′ = (eref - ebest) + (ebest- el′) * norm(cutoff_velocity(v′, τ)) / norm(v′)
                 exponent = 0.5 * τ * (s + s′)
 
                 if dmc
@@ -82,8 +84,8 @@ function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng
                 # pass in also x′ (i.e. the proposed move), which may or
                 # may not be equal to x_new
                 if j > neq
-                    accumulate_observables!(fwalker, model, eref, x′)
-                    #accumulate_observables!(fwalker, model, energy_estimate[j-neq], x′)
+                    #accumulate_observables!(fwalker, model, eref, x′)
+                    accumulate_observables!(fwalker, model, ebest, x′)
                 end
 
             end

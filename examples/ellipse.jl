@@ -20,10 +20,10 @@ hamiltonian_recompute′(ψ, x) = -0.5*ψ.laplacian(x)
 include("forceutil.jl")
 
 # VMC settings
-τ = 1e-3
-nwalkers = 5
-num_blocks = 1000
-steps_per_block = max(100, trunc(Int64, 1/τ))
+τ = 5e-3
+nwalkers = 100
+num_blocks = 160*2
+steps_per_block = max(1, trunc(Int64, 1/τ))
 neq = num_blocks ÷ 10
 lag = trunc(Int64, steps_per_block)
 eref = 1.715
@@ -140,7 +140,7 @@ energies, errors = QuantumMonteCarlo.run_dmc!(
     rng=rng, 
     neq=neq, 
     brancher=stochastic_reconfiguration_pyqmc!,
-    outfile="ellipse_dmc_cutoff_s.hdf5",
+    outfile="ellipse_dmc.hdf5",
     verbosity=:loud,
     branchtime=steps_per_block ÷ 10,
 );

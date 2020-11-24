@@ -49,14 +49,86 @@ def plot_error_over_time(flhf, flpulay, flhf_warp, flpulay_warp, npoints, weight
     ns = np.linspace(1, len(flhf), npoints)
     fig, axes = plt.subplots(nrows=2, ncols=3, figsize=(15, 10), sharey=False)
     for i, (f, fwarp) in enumerate([(flhf, flhf_warp), (flpulay, flpulay_warp), (flhf + flpulay, flhf_warp + flpulay_warp)]):
+
         means, errs = error_over_time(f, npoints, weights=weights)
         means_warp, errs_warp = error_over_time(fwarp, npoints, weights=weights)
+
         axes[0, i].errorbar(ns, means, yerr=errs, marker='o', label="Not warped")
         axes[1, i].plot(ns, errs, marker='o', label="Not warped")
+
         axes[0, i].errorbar(ns, means_warp, yerr=errs_warp, marker='o', label="Warped")
         axes[1, i].plot(ns, errs_warp, marker='o', label="Warped")
+
+        if i == 2:
+            axes[0, i].plot(ns, [3.304]*len(ns), label="PES", color="black")
+
         axes[0, i].legend(); axes[0, i].grid()
         axes[1, i].legend(); axes[1, i].grid()
+
+    return fig, axes
+
+
+def plot_errors_over_time(*forces, labels=[], weights=None, npoints=20):
+    # forces should be tuples of HF and Pulay forces
+
+    if weights is None:
+        weights = np.ones(forces[0][0].shape)
+
+    ns = np.linspace(1, len(forces[0][0]), npoints)
+
+    fig, axes = plt.subplots(nrows=1, ncols=3, figsize=(15, 5), sharey=False)
+
+    for i, (fhf, fp) in enumerate(forces):
+
+        _, hf_errs = error_over_time(fhf, npoints, weights=weights)
+        _, pulay_errs = error_over_time(fp, npoints, weights=weights)
+        _, total_errs = error_over_time(fhf + fp, npoints, weights=weights)
+
+        axes[0].plot(ns, hf_errs, marker='o', label=labels[i])
+        axes[0].set_title("Hellmann-Feynman term")
+        axes[1].plot(ns, pulay_errs, marker='o', label=labels[i])
+        axes[1].set_title("Pulay term")
+        axes[2].plot(ns, total_errs, marker='o', label=labels[i])
+        axes[2].set_title("Total force")
+
+    axes[0].grid()
+    axes[1].grid()
+    axes[2].grid()
+    axes[2].legend(bbox_to_anchor=(1.02, 1), loc="upper left")
+
+    return fig, axes
+
+
+def plot_forces_over_time(*forces, labels=[], weights=None, npoints=20):
+    # forces should be tuples of HF and Pulay forces
+
+    if weights is None:
+        weights = np.ones(forces[0][0].shape)
+
+    ns = np.linspace(1, len(forces[0][0]), npoints)
+
+    fig, axes = plt.subplots(nrows=1, ncols=3, figsize=(15, 5), sharey=False)
+
+    for i, (fhf, fp) in enumerate(forces):
+
+        hf_means, hf_errs = error_over_time(fhf, npoints, weights=weights)
+        pulay_means, pulay_errs = error_over_time(fp, npoints, weights=weights)
+        total_means, total_errs = error_over_time(fhf + fp, npoints, weights=weights)
+
+        axes[0].errorbar(ns, hf_means, yerr=hf_errs, marker='o', label=labels[i])
+        axes[0].set_title("Hellmann-Feynman term")
+        axes[1].errorbar(ns, pulay_means, yerr=pulay_errs, marker='o', label=labels[i])
+        axes[1].set_title("Pulay term")
+        axes[2].errorbar(ns, total_means, yerr=total_errs, marker='o', label=labels[i])
+        axes[2].set_title("Total force")
+
+    axes[2].plot(ns, [3.304]*len(ns), label="PES", color="black")
+
+    axes[0].grid()
+    axes[1].grid()
+    axes[2].grid()
+    axes[2].legend(bbox_to_anchor=(1.02, 1), loc="upper left")
+
     return fig, axes
 
 
@@ -240,24 +312,44 @@ print(f"Total force (vd, warp):                    {ftot_vd_warp:.5f} +/- {ftot_
 
 npoints = 20
 
-fig, _ = plot_force_data_trace(force_hf, force_pulay_exact, force_hf_warp, force_pulay_exact_warp)
-fig.suptitle("Exact force")
-fig, _ = plot_error_over_time(force_hf, force_pulay_exact, force_hf_warp, force_pulay_exact_warp, npoints, weights=weights)
-fig.suptitle("Exact force")
+plot_forces_over_time(
+    (force_hf, force_pulay_exact_pq), 
+    (force_hf, force_pulay_vd), 
+    (force_hf_warp, force_pulay_vd_warp), 
+    (force_hf_warp, force_pulay_exact_warp_pq), 
+    (force_hf_warp, force_pulay_exact_warp_pq_approx), 
+    labels=["Not warped", "VD", "VD, warp", "Warped", "Warped, approx. J"], 
+    weights=weights
+)
 
-fig, _ = plot_force_data_trace(force_hf, force_pulay_vd, force_hf_warp, force_pulay_vd_warp)
-fig.suptitle("VD force")
-fig, _ = plot_error_over_time(force_hf, force_pulay_vd, force_hf_warp, force_pulay_vd_warp, npoints, weights=weights)
-fig.suptitle("VD force")
+plot_errors_over_time(
+    (force_hf, force_pulay_exact_pq), 
+    (force_hf, force_pulay_vd), 
+    (force_hf_warp, force_pulay_vd_warp), 
+    (force_hf_warp, force_pulay_exact_warp_pq), 
+    (force_hf_warp, force_pulay_exact_warp_pq_approx), 
+    labels=["Not warped", "VD", "VD, warp", "Warped", "Warped, approx. J"], 
+    weights=weights
+)
 
-fig, _ = plot_force_data_trace(force_hf, force_pulay_exact_pq, force_hf_warp, force_pulay_exact_warp_pq)
-fig.suptitle("Exact force, p/q")
-fig, _ = plot_error_over_time(force_hf, force_pulay_exact_pq, force_hf_warp, force_pulay_exact_warp_pq, npoints, weights=weights)
-fig.suptitle("Exact force, p/q")
-
-fig, _ = plot_force_data_trace(force_hf, force_pulay_exact_pq, force_hf_warp, force_pulay_exact_warp_pq_approx)
-fig.suptitle("Exact force, p/q, approx")
-fig, _ = plot_error_over_time(force_hf, force_pulay_exact_pq, force_hf_warp, force_pulay_exact_warp_pq_approx, npoints, weights=weights)
-fig.suptitle("Exact force, p/q, approx")
+#fig, _ = plot_force_data_trace(force_hf, force_pulay_exact, force_hf_warp, force_pulay_exact_warp)
+#fig.suptitle("Exact force")
+#fig, _ = plot_error_over_time(force_hf, force_pulay_exact, force_hf_warp, force_pulay_exact_warp, npoints, weights=weights)
+#fig.suptitle("Exact force")
+#
+#fig, _ = plot_force_data_trace(force_hf, force_pulay_vd, force_hf_warp, force_pulay_vd_warp)
+#fig.suptitle("VD force")
+#fig, _ = plot_error_over_time(force_hf, force_pulay_vd, force_hf_warp, force_pulay_vd_warp, npoints, weights=weights)
+#fig.suptitle("VD force")
+#
+#fig, _ = plot_force_data_trace(force_hf, force_pulay_exact_pq, force_hf_warp, force_pulay_exact_warp_pq)
+#fig.suptitle("Exact force, p/q")
+#fig, _ = plot_error_over_time(force_hf, force_pulay_exact_pq, force_hf_warp, force_pulay_exact_warp_pq, npoints, weights=weights)
+#fig.suptitle("Exact force, p/q")
+#
+#fig, _ = plot_force_data_trace(force_hf, force_pulay_exact_pq, force_hf_warp, force_pulay_exact_warp_pq_approx)
+#fig.suptitle("Exact force, p/q, approx")
+#fig, _ = plot_error_over_time(force_hf, force_pulay_exact_pq, force_hf_warp, force_pulay_exact_warp_pq_approx, npoints, weights=weights)
+#fig.suptitle("Exact force, p/q, approx")
 
 plt.show()
