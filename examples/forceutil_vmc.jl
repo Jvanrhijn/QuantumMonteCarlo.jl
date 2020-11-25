@@ -21,7 +21,7 @@ function node_warp(x, ψ, ∇ψ, ψ′, ∇ψ′, τ)
 
     n′ = ∇ψ′ / norm(∇ψ′)
     n = ∇ψ / norm(∇ψ)
-    u, uderiv = cutoff_tanh(d; a=sqrt(0.1τ))
+    u, uderiv = cutoff_tanh(d; a=sqrt(τ))
     x̅ = x .+ (d - d′) * u * sign(ψ′) * n′
    
     # approximate jacobian
@@ -35,7 +35,7 @@ function node_warp_exact_jacobian(x, ψ, ψ′, τ)
     d′(y) = abs(ψ′.value(y)) / norm(ψ′.gradient(y))
     n′(y) = ψ′.gradient(y) / norm(ψ′.gradient(y))
 
-    warp(y::AbstractVector) = y + (d(y) - d′(y)) * n′(y) * sign(ψ′.value(y)) * cutoff_tanh(d(y), a=sqrt(0.1τ))[1]
+    warp(y::AbstractVector) = y + (d(y) - d′(y)) * n′(y) * sign(ψ′.value(y)) * cutoff_tanh(d(y), a=sqrt(τ))[1]
 
     x̅ = warp(x)
 
@@ -235,6 +235,32 @@ function log_psi_gradient(fwalker, model, eref, x′, ψt′, τ; warp=false)
     end
 
     deriv = (log(abs(ψt′.value(x̅))) - log(abs(ψ))) / da
+
+    return deriv 
+end
+
+
+function log_psi_gradient_pathak(fwalker, model, eref, x′, ψt′, τ; warp=false, ϵ=1e-1)
+    walker = fwalker.walker
+
+    x = walker.configuration
+
+    ψ = model.wave_function.value(x)
+    ψ′ = ψt′.value(x)
+
+    ∇ψ = model.wave_function.gradient(x)
+    ∇ψ′ = ψt′.gradient(x)
+
+    if warp
+        x̅, _ = node_warp(x, ψ, ∇ψ, ψ′, ∇ψ′, τ)
+    else
+        x̅ = x
+    end
+
+    d = abs(ψ) / norm(∇ψ)
+    f = d/ϵ < 1 ? 7(d/ϵ)^6 - 15(d/ϵ)^4 + 9(d/ϵ)^2 : 1.0
+
+    deriv = (log(abs(ψt′.value(x̅))) - log(abs(ψ))) / da * f
 
     return deriv 
 end

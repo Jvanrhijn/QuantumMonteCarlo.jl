@@ -9,7 +9,7 @@ using QuantumMonteCarlo
 
 # Force computation settings and import
 a = 1.0
-da = 1e-5
+da = 1e-3
 
 # Setting up the hamiltonian
 hamiltonian(ψstatus, x) = -0.5*ψstatus.laplacian
@@ -19,40 +19,41 @@ hamiltonian_recompute′(ψ, x) = -0.5*ψ.laplacian(x)
 
 include("forceutil.jl")
 
-# VMC settings
-τ = 5e-3
-nwalkers = 100
-num_blocks = 160*2
+# DMC settings
+τ = 5e-2
+nwalkers = 500
+num_blocks = 100
 steps_per_block = max(1, trunc(Int64, 1/τ))
 neq = num_blocks ÷ 10
 lag = trunc(Int64, steps_per_block)
 eref = 1.715
+μ₀ = 1
 
-α(a) = a*cosh(1)
-β(a) = a*sinh(1)
+α(a) = a*cosh(μ₀)
+β(a) = a*sinh(μ₀)
 
 # Trial wave function
 function ψpib(x::AbstractArray)
     r = (x[1] / α(a))^2 + (x[2] / β(a))^2
-    return 1 - r
+    return (1 - r) / a^3
 end
 
 function ψpib′(x::AbstractArray)
     a′ = a + da
     r = (x[1] / α(a′))^2 + (x[2] / β(a′))^2
-    return 1 - r
+    return (1 - r) / a′^3
 end
 
 ψtrial = WaveFunction(
     ψpib,
-    x -> -2 * [x[1]/α(a)^2, x[2]/β(a)^2],
-    x -> -2(1/α(a)^2 + 1/β(a)^2),
+    x -> -2 * [x[1]/α(a)^2, x[2]/β(a)^2] / a^3,
+    x -> -2(1/α(a)^2 + 1/β(a)^2) / a^3,
 )
 
 ψtrial′ = WaveFunction(
     ψpib′,
-    x -> -2 * [x[1]/α(a + da)^2, x[2]/β(a + da)^2],
-    x -> -2(1/α(a + da)^2 + 1/β(a + da)^2),
+    x -> -2 * [x[1]/α(a + da)^2, x[2]/β(a + da)^2] / (a + da)^3,
+    x -> -2(1/α(a + da)^2 + 1/β(a + da)^2) / (a + da)^3,
 )
 
 model = Model(

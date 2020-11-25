@@ -22,7 +22,7 @@ include("forceutil_vmc.jl")
 # VMC settings
 τ = 1e-1
 nwalkers = 1
-num_blocks = 16*1600
+num_blocks = 10000
 steps_per_block = 400
 neq = num_blocks ÷ 10
 lag = trunc(Int64, steps_per_block)
@@ -68,6 +68,10 @@ observables = OrderedDict(
     "grad el (warp)" => (fwalker, model, eref, xp) -> local_energy_gradient(fwalker, model, eref, xp, ψtrial′, τ; warp=true),
     # Gradients of log(ψ)
     "grad log psi" => (fwalker, model, eref, xp) -> log_psi_gradient(fwalker, model, eref, xp, ψtrial′, τ; warp=false),
+    "grad log psi pathak (1e-2)" => (fwalker, model, eref, xp) -> log_psi_gradient_pathak(fwalker, model, eref, xp, ψtrial′, τ; warp=false, ϵ=1e-2),
+    "grad log psi pathak (1e-1)" => (fwalker, model, eref, xp) -> log_psi_gradient_pathak(fwalker, model, eref, xp, ψtrial′, τ; warp=false, ϵ=1e-1),
+    "grad log psi pathak (0.5e-1)" => (fwalker, model, eref, xp) -> log_psi_gradient_pathak(fwalker, model, eref, xp, ψtrial′, τ; warp=false, ϵ=0.5e-1),
+    "grad log psi pathak (1.5e-1)" => (fwalker, model, eref, xp) -> log_psi_gradient_pathak(fwalker, model, eref, xp, ψtrial′, τ; warp=false, ϵ=1.5e-1),
     "grad log psi (warp)" => (fwalker, model, eref, xp) -> log_psi_gradient(fwalker, model, eref, xp, ψtrial′, τ; warp=true),
     # S, T with and without warp
     "grad g" => (fwalker, model, eref, xp) -> greens_function_gradient(fwalker, model, eref, xp, ψtrial′, τ; usepq=false, warp=false),
@@ -100,6 +104,10 @@ fat_walkers = [QuantumMonteCarlo.FatWalker(
     ),
     [
         ("Local energy", "grad log psi"),
+        ("Local energy", "grad log psi pathak (1e-2)"),
+        ("Local energy", "grad log psi pathak (1e-1)"),
+        ("Local energy", "grad log psi pathak (0.5e-1)"),
+        ("Local energy", "grad log psi pathak (1.5e-1)"),
         ("Local energy", "grad log psi (warp)"),
         ("Local energy", "grad g"),
         ("Local energy", "grad g (warp)"),

@@ -147,9 +147,17 @@ def compute_forces(fpath):
 
     # Get psi derivative
     psilogderiv = data["grad log psi"][()][1:]
+    psilogderiv_pathak0 = data["grad log psi pathak (1e-2)"][()][1:]
+    psilogderiv_pathak1 = data["grad log psi pathak (0.5e-1)"][()][1:]
+    psilogderiv_pathak2 = data["grad log psi pathak (1e-1)"][()][1:]
+    psilogderiv_pathak3 = data["grad log psi pathak (1.5e-1)"][()][1:]
     psilogderiv_warp = data["grad log psi (warp)"][()][1:]
 
     el_times_psilogderiv = data["Local energy * grad log psi"][()][1:]
+    el_times_psilogderiv_pathak0 = data["Local energy * grad log psi pathak (1e-2)"][()][1:]
+    el_times_psilogderiv_pathak1 = data["Local energy * grad log psi pathak (0.5e-1)"][()][1:]
+    el_times_psilogderiv_pathak2 = data["Local energy * grad log psi pathak (1e-1)"][()][1:]
+    el_times_psilogderiv_pathak3 = data["Local energy * grad log psi pathak (1.5e-1)"][()][1:]
     el_times_psilogderiv_warp = data["Local energy * grad log psi (warp)"][()][1:]
 
     # Hellmann-Feynman force
@@ -188,6 +196,19 @@ def compute_forces(fpath):
             2 * (el_times_psilogderiv - energy*psilogderiv) \
             )
 
+    force_pulay_pathak0 = -(
+            2 * (el_times_psilogderiv_pathak0 - energy*psilogderiv_pathak0) \
+            )
+    force_pulay_pathak1 = -(
+            2 * (el_times_psilogderiv_pathak1 - energy*psilogderiv_pathak1) \
+            )
+    force_pulay_pathak2 = -(
+            2 * (el_times_psilogderiv_pathak2 - energy*psilogderiv_pathak2) \
+            )
+    force_pulay_pathak3 = -(
+            2 * (el_times_psilogderiv_pathak3 - energy*psilogderiv_pathak3) \
+            )
+
     force_pulay__warp = -(
             2 * (el_times_psilogderiv_warp - energy*psilogderiv_warp) \
             +   (el_times_jac_logderiv - energy*jac_logderiv) \
@@ -200,6 +221,10 @@ def compute_forces(fpath):
            force_pulay_exact.flatten(), \
            force_pulay_exact_warp.flatten(), \
            force_pulay_.flatten(), \
+           force_pulay_pathak0.flatten(), \
+           force_pulay_pathak1.flatten(), \
+           force_pulay_pathak2.flatten(), \
+           force_pulay_pathak3.flatten(), \
            force_pulay__warp.flatten(), \
            force_pulay_exact_pq.flatten(), \
            force_pulay_exact_warp_pq.flatten(), \
@@ -209,7 +234,12 @@ def compute_forces(fpath):
 
 force_hf, force_hf_warp, \
         force_pulay_exact, force_pulay_exact_warp, \
-        force_pulay_, force_pulay__warp, \
+        force_pulay_, \
+        force_pulay_pathak0, \
+        force_pulay_pathak1, \
+        force_pulay_pathak2, \
+        force_pulay_pathak3, \
+        force_pulay__warp, \
         force_pulay_exact_pq, force_pulay_exact_warp_pq, force_pulay_exact_warp_pq_approx, \
         weights \
     = compute_forces(sys.argv[1])
@@ -225,6 +255,15 @@ fpulay_exact_err = error(force_pulay_exact, weights=weights)
 
 fpulay_  = np.average(force_pulay_, weights=weights)
 fpulay__err = error(force_pulay_, weights=weights)
+
+fpulay_pathak0  = np.average(force_pulay_pathak0, weights=weights)
+fpulay_pathak0_err = error(force_pulay_pathak0, weights=weights)
+fpulay_pathak1  = np.average(force_pulay_pathak1, weights=weights)
+fpulay_pathak1_err = error(force_pulay_pathak1, weights=weights)
+fpulay_pathak2  = np.average(force_pulay_pathak2, weights=weights)
+fpulay_pathak2_err = error(force_pulay_pathak2, weights=weights)
+fpulay_pathak3  = np.average(force_pulay_pathak3, weights=weights)
+fpulay_pathak3_err = error(force_pulay_pathak3, weights=weights)
 
 fpulay_exact_warp = np.average(force_pulay_exact_warp, weights=weights)
 fpulay_exact_err_warp = error(force_pulay_exact_warp, weights=weights)
@@ -243,6 +282,15 @@ ftot_exact_err = error(force_hf + force_pulay_exact, weights=weights)
 
 ftot_ = np.average(force_hf + force_pulay_, weights=weights)
 ftot__err = error(force_hf + force_pulay_, weights=weights)
+
+ftot_pathak0 = np.average(force_hf + force_pulay_pathak0, weights=weights)
+ftot_pathak_err0 = error(force_hf + force_pulay_pathak0, weights=weights)
+ftot_pathak1 = np.average(force_hf + force_pulay_pathak1, weights=weights)
+ftot_pathak_err1 = error(force_hf + force_pulay_pathak1, weights=weights)
+ftot_pathak2 = np.average(force_hf + force_pulay_pathak2, weights=weights)
+ftot_pathak_err2 = error(force_hf + force_pulay_pathak2, weights=weights)
+ftot_pathak3 = np.average(force_hf + force_pulay_pathak3, weights=weights)
+ftot_pathak_err3 = error(force_hf + force_pulay_pathak3, weights=weights)
 
 ftot_exact_warp = np.average(force_hf_warp + force_pulay_exact_warp, weights=weights)
 ftot_exact_err_warp = error(force_hf_warp + force_pulay_exact_warp, weights=weights)
@@ -269,6 +317,7 @@ print(f"Pulay force (Green's, p/q):                   {fpulay_exact_pq:.5f} +/- 
 print(f"Pulay force (Green's, warp, p/q):             {fpulay_exact_pq_warp:.5f} +/- {fpulay_exact_pq_err_warp:.5f}")
 print(f"\n")
 print(f"Pulay force:                                  {fpulay_:.5f} +/- {fpulay__err:.5f}")
+print(f"Pulay force pathak:                           {fpulay_pathak0:.5f} +/- {fpulay_pathak0_err:.5f}")
 print(f"Pulay force (warp):                           {fpulay__warp:.5f} +/- {fpulay__err_warp:.5f}")
 print(f"\n")
 print(f"Total force (Green's):                        {ftot_exact:.5f} +/- {ftot_exact_err:.5f}")
@@ -277,27 +326,40 @@ print(f"Total force (Green's, p/q):                   {ftot_exact_pq:.5f} +/- {f
 print(f"Total force (Green's, warp, p/q):             {ftot_exact_pq_warp:.5f} +/- {ftot_exact_pq_err_warp:.5f}")
 print(f"Total force (Green's, warp, p/q, approx J):   {ftot_exact_pq_warp_approx:.5f} +/- {ftot_exact_pq_err_warp_approx:.5f}")
 print(f"Total force:                                  {ftot_:.5f} +/- {ftot__err:.5f}")
+print(f"Total force pathak:                           {ftot_pathak1:.5f} +/- {ftot_pathak_err1:.5f}")
 print(f"Total force (warp):                           {ftot__warp:.5f} +/- {ftot__err_warp:.5f}")
 
 
 plot_forces_over_time(
     (force_hf, force_pulay_), 
+    (force_hf, force_pulay_pathak1), 
     (force_hf_warp, force_pulay__warp), 
     (force_hf, force_pulay_exact_pq), 
     (force_hf_warp, force_pulay_exact_warp_pq), 
     (force_hf_warp, force_pulay_exact_warp_pq_approx), 
-    labels=["Not warped", "Warped", "Projector", "Projector, warped", "Projector, approx. J"], 
+    labels=["Not warped",  "Pathak", "Warped", "Projector", "Projector, warped", "Projector, approx. J"], 
     weights=weights
 )
 
 plot_errors_over_time(
     (force_hf, force_pulay_), 
+    (force_hf, force_pulay_pathak1), 
     (force_hf_warp, force_pulay__warp), 
     (force_hf, force_pulay_exact_pq), 
     (force_hf_warp, force_pulay_exact_warp_pq), 
     (force_hf_warp, force_pulay_exact_warp_pq_approx), 
-    labels=["Not warped", "Warped", "Projector", "Projector, warped", "Projector, approx. J"], 
+    labels=["Not warped", "Pathak", "Warped", "Projector", "Projector, warped", "Projector, approx. J"], 
     weights=weights
 )
+
+epss = [1e-2, 0.5e-1, 1e-1, 1.5e-1]
+
+fs_pathak = [ftot_pathak0, ftot_pathak1, ftot_pathak2, ftot_pathak3]
+errs_pathak = [ftot_pathak_err0, ftot_pathak_err1, ftot_pathak_err2, ftot_pathak_err3]
+plt.figure()
+plt.errorbar(epss, fs_pathak, yerr=errs_pathak, marker="o")
+plt.plot([0, epss[-1]], [3.45]*2, "black")
+plt.xlim(0)
+plt.grid()
 
 plt.show()
