@@ -9,7 +9,7 @@ using QuantumMonteCarlo
 
 # Force computation settings and import
 a = 1.0
-da = 1e-3
+da = 1e-5
 
 # Setting up the hamiltonian
 hamiltonian(ψstatus, x) = -0.5*ψstatus.laplacian
@@ -20,12 +20,16 @@ hamiltonian_recompute′(ψ, x) = -0.5*ψ.laplacian(x)
 include("forceutil.jl")
 
 # DMC settings
-τ = 5e-2
-nwalkers = 500
-num_blocks = 100
+τ = 0.5e-2
+#nwalkers = 1
+#num_blocks = 10000
+nwalkers = 2
+num_blocks = 5000
 steps_per_block = max(1, trunc(Int64, 1/τ))
-neq = num_blocks ÷ 10
-lag = trunc(Int64, steps_per_block)
+#neq = num_blocks ÷ 10
+neq = 100
+#lag = trunc(Int64, steps_per_block)
+lag = 100
 eref = 1.715
 μ₀ = 1
 

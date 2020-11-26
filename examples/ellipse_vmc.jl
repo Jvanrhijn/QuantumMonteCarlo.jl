@@ -60,12 +60,19 @@ model = Model(
     ψtrial,
 )
 
+warpfacs = [1.0, 0.5]
+funcs = 
+
 observables = OrderedDict(
     # Local energy
     "Local energy" => local_energy,
     # Gradients of local energy
     "grad el" => (fwalker, model, eref, xp) -> local_energy_gradient(fwalker, model, eref, xp, ψtrial′, τ; warp=false),
     "grad el (warp)" => (fwalker, model, eref, xp) -> local_energy_gradient(fwalker, model, eref, xp, ψtrial′, τ; warp=true),
+    "grad el pathak (1e-2)" => (fwalker, model, eref, xp) -> local_energy_gradient_pathak(fwalker, model, eref, xp, ψtrial′, τ; ϵ=1e-2),
+    "grad el pathak (1e-1)" => (fwalker, model, eref, xp) -> local_energy_gradient_pathak(fwalker, model, eref, xp, ψtrial′, τ; ϵ=1e-1),
+    "grad el pathak (0.5e-1)" => (fwalker, model, eref, xp) -> local_energy_gradient_pathak(fwalker, model, eref, xp, ψtrial′, τ; ϵ=0.5e-1),
+    "grad el pathak (1.5e-1)" => (fwalker, model, eref, xp) -> local_energy_gradient_pathak(fwalker, model, eref, xp, ψtrial′, τ; ϵ=1.5e-1),
     # Gradients of log(ψ)
     "grad log psi" => (fwalker, model, eref, xp) -> log_psi_gradient(fwalker, model, eref, xp, ψtrial′, τ; warp=false),
     "grad log psi pathak (1e-2)" => (fwalker, model, eref, xp) -> log_psi_gradient_pathak(fwalker, model, eref, xp, ψtrial′, τ; warp=false, ϵ=1e-2),
@@ -101,6 +108,7 @@ fat_walkers = [QuantumMonteCarlo.FatWalker(
         "grad g (p/q)" => CircularBuffer(lag),
         "grad g (warp, p/q)" => CircularBuffer(lag),
         "sum grad log j" => CircularBuffer(lag),
+        "sum grad log j approx" => CircularBuffer(lag),
     ),
     [
         ("Local energy", "grad log psi"),
