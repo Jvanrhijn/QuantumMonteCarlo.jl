@@ -24,7 +24,11 @@ function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng
 
     # open output file
     if outfile != Nothing
+        if isfile(outfile)
+            rm(outfile)
+        end
         file = h5open(outfile, "w")
+        close(file)
     end
 
     if verbosity == :progressbar
@@ -68,6 +72,8 @@ function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng
 
                 s = (eref - ebest) + (ebest - el) * norm(cutoff_velocity(v, τ)) / norm(v)
                 s′ = (eref - ebest) + (ebest- el′) * norm(cutoff_velocity(v′, τ)) / norm(v′)
+                #s = (ebest - el) * norm(cutoff_velocity(v, τ)) / norm(v)
+                #s′ = (ebest- el′) * norm(cutoff_velocity(v′, τ)) / norm(v′)
                 exponent = 0.5 * τ * (s + s′)
 
                 if dmc
@@ -111,7 +117,9 @@ function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng
             average_block!(accumulator)
 
             if outfile != Nothing
+                file = h5open(outfile, "r+")
                 write_to_file!(accumulator, file)
+                close(file)
             end
         end
 
