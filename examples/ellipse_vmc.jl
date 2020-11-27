@@ -60,9 +60,6 @@ model = Model(
     ψtrial,
 )
 
-warpfacs = [1.0, 0.5]
-funcs = 
-
 observables = OrderedDict(
     # Local energy
     "Local energy" => local_energy,

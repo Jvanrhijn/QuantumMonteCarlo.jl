@@ -380,6 +380,8 @@ plot_errors_over_time(
 
 epss = [1e-2, 0.5e-1, 1e-1, 1.5e-1]
 
+plot_force_data_trace(force_hf, force_pulay_exact_pq, force_hf_warp, force_pulay_exact_warp_pq)
+
 fs_pathak = [ftot_pathak0, ftot_pathak1, ftot_pathak2, ftot_pathak3]
 errs_pathak = [ftot_pathak_err0, ftot_pathak_err1, ftot_pathak_err2, ftot_pathak_err3]
 plt.figure()

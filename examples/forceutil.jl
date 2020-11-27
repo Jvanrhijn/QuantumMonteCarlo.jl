@@ -145,8 +145,8 @@ function greens_function_gradient(fwalker, model, eref, x′, ψt′, τ; usepq=
     # drift velocity
     vbare(r) = ψ.gradient(r) / ψ.value(r)
     vsbare(r) = ψt′.gradient(r) / ψt′.value(r)
-    v(r) = QuantumMonteCarlo.cutoff_velocity(ψ.gradient(r) / ψ.value(r), τ)
-    vs(r) = QuantumMonteCarlo.cutoff_velocity(ψt′.gradient(r) / ψt′.value(r), τ)
+    v(r) = QuantumMonteCarlo.cutoff_velocity(vbare(r), τ)
+    vs(r) = QuantumMonteCarlo.cutoff_velocity(vsbare(r), τ)
 
     # drift-diffusion greens function
     t(r′, r) = exp(-norm(r′ - r - v(r)*τ)^2 / 2τ)
@@ -196,8 +196,8 @@ function greens_function_gradient(fwalker, model, eref, x′, ψt′, τ; usepq=
             deriv += ss(x̅′, x̅) - s(x′, x)
             deriv /= da
         elseif node_reject
-            deriv = logts(x̅′, x̅) - logt(x′, x)
-            deriv += ss(x̅, x̅) - s(x, x)
+            #deriv = logts(x̅′, x̅) - logt(x′, x)
+            deriv = ss(x̅, x̅) - s(x, x)
             deriv /= da
         else
             deriv = log(qs(x̅′, x̅)) - log(q(x′, x))

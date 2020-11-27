@@ -157,10 +157,11 @@ function greens_function_gradient(fwalker, model, eref, x′, ψt′, τ; usepq=
             deriv += logts(x̅′, x̅) - logt(x′, x)
             deriv /= da
         elseif node_reject
-            deriv = logts(x̅′, x̅) - logt(x′, x)
-            deriv /= da
+            #deriv = logts(x̅′, x̅) - logt(x′, x)
+            #deriv /= da
+            deriv = 0
         else
-            deriv = log(qs(x̅′, x̅)) - log(q(x′, x))
+            deriv = p(x′, x) / (1 - p(x′, x)) * (log(ps(x̅′, x̅)) - log(p(x′, x)))
             deriv += logts(x̅′, x̅) - logt(x′, x)
             deriv /= da
         end
