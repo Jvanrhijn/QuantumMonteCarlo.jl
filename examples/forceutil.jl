@@ -4,7 +4,7 @@ using ForwardDiff
 # All functions needed for calculating forces
 function local_energy(fwalker, model, eref, x′)
     ψ = model.wave_function
-    x = fwalker.walker.configuration
+    x = fwalker.walker.configuration_old
     model.hamiltonian_recompute(ψ, x) / ψ.value(x)
 end
 
@@ -55,14 +55,13 @@ end
 
 function local_energy_gradient(fwalker, model, eref, x′, ψt′, τ; warp=false)
     walker = fwalker.walker
-    x = walker.configuration
+    x = walker.configuration_old
     ψ = model.wave_function
     ∇ψ = model.wave_function.gradient
     ψ′ = ψt′
     ∇ψ′ = ψ′.gradient
 
     local_e(x) = model.hamiltonian_recompute(ψ, x) / ψ.value(x)
-
 
     if warp
         x̅, _ = node_warp(x, ψ.value(x), ∇ψ(x), ψ′.value(x), ∇ψ′(x), τ)
@@ -196,7 +195,7 @@ function greens_function_gradient(fwalker, model, eref, x′, ψt′, τ; usepq=
             deriv += ss(x̅′, x̅) - s(x′, x)
             deriv /= da
         elseif node_reject
-            #deriv = logts(x̅′, x̅) - logt(x′, x)
+            deriv = logts(x̅′, x̅) - logt(x′, x)
             deriv = ss(x̅, x̅) - s(x, x)
             deriv /= da
         else
@@ -238,7 +237,7 @@ function jacobian_gradient_current(fwalker, model, eref, x′, ψt′,  τ)
     walker = fwalker.walker
 
     #x = walker.configuration_old
-    x = walker.configuration
+    x = walker.configuration_old
 
     ψ = model.wave_function.value(x)
     ∇ψ = model.wave_function.gradient(x)
@@ -274,7 +273,7 @@ function jacobian_gradient_current_approx(fwalker, model, eref, x′, ψt′,  �
     walker = fwalker.walker
 
     #x = walker.configuration_old
-    x = walker.configuration
+    x = walker.configuration_old
 
     ψ = model.wave_function.value(x)
     ∇ψ = model.wave_function.gradient(x)
@@ -290,7 +289,7 @@ end
 function log_psi_gradient(fwalker, model, eref, x′, ψt′, τ; warp=false)
     walker = fwalker.walker
 
-    x = walker.configuration
+    x = walker.configuration_old
 
     ψ = model.wave_function.value(x)
     ψ′ = ψt′.value(x)

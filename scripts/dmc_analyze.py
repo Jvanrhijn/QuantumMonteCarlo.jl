@@ -37,9 +37,10 @@ def error(block_means, weights=None):
 def error_over_time(data, num_points, weights=None):
     if weights is None:
         weights = np.ones(data.shape)
-    partition_size = len(data) // num_points
-    errs = np.array([error(data[:(i+1)*partition_size], weights=weights[:(i+1)*partition_size]) for i in range(num_points)])
-    means = np.array([np.average(data[:(i+1)*partition_size], weights=weights[:(i+1)*partition_size]) for i in range(num_points)])
+    chunks = np.array_split(data, num_points)
+    weights_chunks = np.array_split(weights, num_points)
+    errs = np.array([error(np.concatenate(chunks[:i+1]), weights=np.concatenate(weights_chunks[:i+1])) for i in range(num_points)])
+    means = np.array([np.average(np.concatenate(chunks[:i+1]), weights=np.concatenate(weights_chunks[:i+1])) for i in range(num_points)])
     return means, errs
 
 
@@ -193,7 +194,7 @@ def compute_forces(fpath):
     force_pulay_exact_warp = -(
                 (el_times_gderiv_sum_warp - energy*gderiv_sum_warp) \
             +   (el_times_jderiv_sum - energy*jderiv_sum) \
-            +   (el_times_jac_logderiv - energy*jac_logderiv) \
+            +   0*(el_times_jac_logderiv - energy*jac_logderiv) \
             )
 
 
@@ -204,13 +205,13 @@ def compute_forces(fpath):
     force_pulay_exact_warp_pq = -(
                 el_times_gderiv_sum_warp_pq - energy*gderiv_sum_warp_pq \
             +   (el_times_jderiv_sum - energy*jderiv_sum) \
-            +   (el_times_jac_logderiv - energy*jac_logderiv) \
+            +   0*(el_times_jac_logderiv - energy*jac_logderiv) \
             )
 
     force_pulay_exact_warp_pq_approx = -(
                 el_times_gderiv_sum_warp_pq - energy*gderiv_sum_warp_pq \
             +   el_times_jderiv_sum_approx - energy*jderiv_sum_approx \
-            +   (el_times_jac_logderiv_approx - energy*jac_logderiv_approx) \
+            +   0*(el_times_jac_logderiv_approx - energy*jac_logderiv_approx) \
             )
 
     force_pulay_vd = -(
@@ -314,23 +315,37 @@ npoints = 20
 
 plot_forces_over_time(
     (force_hf, force_pulay_exact_pq), 
-    (force_hf, force_pulay_vd), 
-    (force_hf_warp, force_pulay_vd_warp), 
+    #(force_hf, force_pulay_vd), 
+    #(force_hf_warp, force_pulay_vd_warp), 
     (force_hf_warp, force_pulay_exact_warp_pq), 
     (force_hf_warp, force_pulay_exact_warp_pq_approx), 
-    labels=["Not warped", "VD", "VD, warp", "Warped", "Warped, approx. J"], 
+    labels=[
+        "Not warped", 
+        #"VD", 
+        #"VD, warp", 
+        "Warped", 
+        "Warped, approx. J"
+    ], 
     weights=weights
 )
 
 plot_errors_over_time(
     (force_hf, force_pulay_exact_pq), 
-    (force_hf, force_pulay_vd), 
-    (force_hf_warp, force_pulay_vd_warp), 
+    #(force_hf, force_pulay_vd), 
+    #(force_hf_warp, force_pulay_vd_warp), 
     (force_hf_warp, force_pulay_exact_warp_pq), 
     (force_hf_warp, force_pulay_exact_warp_pq_approx), 
-    labels=["Not warped", "VD", "VD, warp", "Warped", "Warped, approx. J"], 
+    labels=[
+        "Not warped", 
+        #"VD", 
+        #"VD, warp", 
+        "Warped", 
+        "Warped, approx. J"
+    ], 
     weights=weights
 )
+
+plot_force_data_trace(force_hf, force_pulay_exact_pq, force_hf_warp, force_pulay_exact_warp_pq)
 
 #fig, _ = plot_force_data_trace(force_hf, force_pulay_exact, force_hf_warp, force_pulay_exact_warp)
 #fig.suptitle("Exact force")

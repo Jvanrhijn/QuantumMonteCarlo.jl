@@ -76,6 +76,15 @@ function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng
                 #s′ = (ebest- el′) * norm(cutoff_velocity(v′, τ)) / norm(v′)
                 exponent = 0.5 * τ * (s + s′)
 
+                # update FatWalker with observables computed at latest
+                # configuration
+                # pass in also x′ (i.e. the proposed move), which may or
+                # may not be equal to x_new
+                if j > neq
+                    #accumulate_observables!(fwalker, model, eref, x′)
+                    accumulate_observables!(fwalker, model, ebest, x′)
+                end
+
                 if dmc
                     walker.weight *= exp(exponent)
                 else
@@ -85,14 +94,6 @@ function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng
                 local_energy_ensemble[i] = el′
                 weight_ensemble[i] = walker.weight
 
-                # update FatWalker with observables computed at latest
-                # configuration
-                # pass in also x′ (i.e. the proposed move), which may or
-                # may not be equal to x_new
-                if j > neq
-                    #accumulate_observables!(fwalker, model, eref, x′)
-                    accumulate_observables!(fwalker, model, ebest, x′)
-                end
 
             end
 
