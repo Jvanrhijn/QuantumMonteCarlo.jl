@@ -72,18 +72,8 @@ function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng
 
                 s = (eref - ebest) + (ebest - el) * norm(cutoff_velocity(v, τ)) / norm(v)
                 s′ = (eref - ebest) + (ebest- el′) * norm(cutoff_velocity(v′, τ)) / norm(v′)
-                #s = (ebest - el) * norm(cutoff_velocity(v, τ)) / norm(v)
-                #s′ = (ebest- el′) * norm(cutoff_velocity(v′, τ)) / norm(v′)
                 exponent = 0.5 * τ * (s + s′)
 
-                # update FatWalker with observables computed at latest
-                # configuration
-                # pass in also x′ (i.e. the proposed move), which may or
-                # may not be equal to x_new
-                if j > neq
-                    #accumulate_observables!(fwalker, model, eref, x′)
-                    accumulate_observables!(fwalker, model, ebest, x′)
-                end
 
                 if dmc
                     walker.weight *= exp(exponent)
@@ -94,7 +84,14 @@ function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng
                 local_energy_ensemble[i] = el′
                 weight_ensemble[i] = walker.weight
 
-
+                # update FatWalker with observables computed at latest
+                # configuration
+                # pass in also x′ (i.e. the proposed move), which may or
+                # may not be equal to x_new
+                if j > neq
+                    #accumulate_observables!(fwalker, model, eref, x′)
+                    accumulate_observables!(fwalker, model, ebest, x′)
+                end
             end
 
             if j > neq
@@ -106,6 +103,9 @@ function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng
             block_energy[b] = ensemble_energy
             block_weight[b] = mean(weight_ensemble)
             block_vmc_energy[b] = mean(local_energy_ensemble)
+
+            index = max(1, j - neq)
+            eref = energy_estimate[index] - log(mean(weight_ensemble))
 
             if b % branchtime == 0
                 # perform branching
@@ -128,10 +128,9 @@ function run_dmc!(model, fat_walkers, τ, num_blocks, steps_per_block, eref; rng
         block_weight = mean(block_weight)
         block_vmc_energy = mean(block_vmc_energy)
 
-        if j <= neq
-            eref = energy_estimate[1] - log(block_weight)
-        end
-
+        #if j <= neq
+        #    eref = energy_estimate[1] - log(block_weight)
+        #end
 
         # only update energy esimate after block has run
         if j > neq

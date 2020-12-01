@@ -92,6 +92,7 @@ def plot_errors_over_time(*forces, labels=[], weights=None, npoints=20):
         axes[2].plot(ns, total_errs, marker='o', label=labels[i])
         axes[2].set_title("Total force")
 
+
     axes[0].grid()
     axes[1].grid()
     axes[2].grid()
@@ -116,11 +117,26 @@ def plot_forces_over_time(*forces, labels=[], weights=None, npoints=20):
         pulay_means, pulay_errs = error_over_time(fp, npoints, weights=weights)
         total_means, total_errs = error_over_time(fhf + fp, npoints, weights=weights)
 
-        axes[0].errorbar(ns, hf_means, yerr=hf_errs, marker='o', label=labels[i])
+        #axes[0].errorbar(ns, hf_means, yerr=hf_errs, marker='o', label=labels[i])
+        #axes[0].set_title("Hellmann-Feynman term")
+        #axes[1].errorbar(ns, pulay_means, yerr=pulay_errs, marker='o', label=labels[i])
+        #axes[1].set_title("Pulay term")
+        #axes[2].errorbar(ns, total_means, yerr=total_errs, marker='o', label=labels[i])
+        #axes[2].set_title("Total force")
+
+        #axes[0].errorbar(ns, hf_means, yerr=hf_errs, marker='o', label=labels[i])
+        axes[0].fill_between(ns, hf_means - hf_errs, hf_means + hf_errs, alpha=0.2)#, yerr=hf_errs, marker='o', label=labels[i])
+        axes[0].plot(ns, hf_means)#, yerr=hf_errs, marker='o', label=labels[i])
         axes[0].set_title("Hellmann-Feynman term")
-        axes[1].errorbar(ns, pulay_means, yerr=pulay_errs, marker='o', label=labels[i])
+
+        #axes[1].errorbar(ns, pulay_means, yerr=pulay_errs, marker='o', label=labels[i])
+        axes[1].fill_between(ns, pulay_means - pulay_errs, pulay_means + pulay_errs, alpha=0.2)#, yerr=hf_errs, marker='o', label=labels[i])
+        axes[1].plot(ns, pulay_means)#, yerr=hf_errs, marker='o', label=labels[i])
         axes[1].set_title("Pulay term")
-        axes[2].errorbar(ns, total_means, yerr=total_errs, marker='o', label=labels[i])
+
+        #axes[2].errorbar(ns, total_means, yerr=total_errs, marker='o', label=labels[i])
+        axes[2].fill_between(ns, total_means - total_errs, total_means + total_errs, alpha=0.2)#, yerr=hf_errs, marker='o', label=labels[i])
+        axes[2].plot(ns, total_means)#, yerr=hf_errs, marker='o', label=labels[i])
         axes[2].set_title("Total force")
 
     axes[2].plot(ns, [3.304]*len(ns), label="PES", color="black")
@@ -315,37 +331,42 @@ npoints = 20
 
 plot_forces_over_time(
     (force_hf, force_pulay_exact_pq), 
+    #(force_hf_warp, force_pulay_exact_warp), 
     #(force_hf, force_pulay_vd), 
     #(force_hf_warp, force_pulay_vd_warp), 
     (force_hf_warp, force_pulay_exact_warp_pq), 
-    (force_hf_warp, force_pulay_exact_warp_pq_approx), 
+    #(force_hf_warp, force_pulay_exact_warp_pq_approx), 
     labels=[
         "Not warped", 
+        #"Warped, naive"
         #"VD", 
         #"VD, warp", 
         "Warped", 
-        "Warped, approx. J"
+        #"Warped, approx. J"
     ], 
     weights=weights
 )
 
 plot_errors_over_time(
     (force_hf, force_pulay_exact_pq), 
+    #(force_hf_warp, force_pulay_exact_warp), 
     #(force_hf, force_pulay_vd), 
     #(force_hf_warp, force_pulay_vd_warp), 
     (force_hf_warp, force_pulay_exact_warp_pq), 
-    (force_hf_warp, force_pulay_exact_warp_pq_approx), 
+    #(force_hf_warp, force_pulay_exact_warp_pq_approx), 
     labels=[
         "Not warped", 
+        #"Warped, naive"
         #"VD", 
         #"VD, warp", 
         "Warped", 
-        "Warped, approx. J"
+        #"Warped, approx. J"
     ], 
     weights=weights
 )
 
-plot_force_data_trace(force_hf, force_pulay_exact_pq, force_hf_warp, force_pulay_exact_warp_pq)
+plot_force_data_trace(force_hf, force_pulay_exact_pq, force_hf_warp, force_pulay_exact_warp_pq_approx)
+#plot_force_data_trace(force_hf, force_pulay_vd, force_hf_warp, force_pulay_vd_warp)
 
 #fig, _ = plot_force_data_trace(force_hf, force_pulay_exact, force_hf_warp, force_pulay_exact_warp)
 #fig.suptitle("Exact force")

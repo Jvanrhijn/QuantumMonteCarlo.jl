@@ -188,24 +188,53 @@ function greens_function_gradient(fwalker, model, eref, x′, ψt′, τ; usepq=
         x̅′ = x′
     end
 
+    ξ = x′ - x - v(x)*τ
+    ∂ₐv = (vs(x̅) - v(x))
+    dx̅s = x̅′ - x̅
+    dx = x′ - x
+    ∂ₐx̅ = dx̅s - dx
+
+    ∂ₐlnTf = dot(ξ, ∂ₐv) - 1/τ * dot(ξ, ∂ₐx̅)
+    acc = p(x′, x)
+
     if usepq
+        deriv = logts(x̅′, x̅) - logt(x′, x)
         if accepted
-            deriv = log(ps(x̅′, x̅)) - log(p(x′, x))
-            deriv += logts(x̅′, x̅) - logt(x′, x)
+            deriv += acc < 1.0 ? log(ps(x̅′, x̅)) - log(p(x′, x)) : 0.0
             deriv += ss(x̅′, x̅) - s(x′, x)
-            deriv /= da
         elseif node_reject
-            deriv = logts(x̅′, x̅) - logt(x′, x)
-            deriv = ss(x̅, x̅) - s(x, x)
-            deriv /= da
-        else
-            deriv = log(qs(x̅′, x̅)) - log(q(x′, x))
-            deriv += logts(x̅′, x̅) - logt(x′, x)
             deriv += ss(x̅, x̅) - s(x, x)
-            deriv /= da
+        else
+            deriv += log(qs(x̅′, x̅)) - log(q(x′, x))
+            deriv += ss(x̅, x̅) - s(x, x)
         end
+        deriv /= da
     else
-        deriv = accepted ? logts(x̅′, x̅) - logt(x′, x) : 0.0
+        deriv = ∂ₐlnTf
+        deriv += ss(x̅′, x̅) - s(x′, x)
+        deriv /= da
+    end
+
+    return deriv
+
+    if usepq
+        #deriv = logts(x̅′, x̅) - logt(x′, x)
+        deriv = (ts(x̅′, x̅) - t(x′, x)) / t(x′, x)
+        if accepted
+            #deriv += acc < 1.0 ? log(ps(x̅′, x̅)) - log(p(x′, x)) : 0.0
+            deriv += acc < 1.0 ? (ps(x̅′, x̅) - p(x′, x)) / acc : 0.0
+            deriv += ss(x̅′, x̅) - s(x′, x)
+        elseif node_reject
+            deriv += ss(x̅, x̅) - s(x, x)
+        else
+            #deriv += log(qs(x̅′, x̅)) - log(q(x′, x))
+            deriv += (qs(x̅′, x̅) - q(x′, x)) / (1 - acc)
+            deriv += ss(x̅, x̅) - s(x, x)
+            #deriv += acc / (1 - acc) * (log(ps(x̅′, x̅)) - log(p(x′, x)))
+        end
+        deriv /= da
+    else
+        deriv = ∂ₐlnTf
         deriv += ss(x̅′, x̅) - s(x′, x)
         deriv /= da
     end
@@ -236,8 +265,8 @@ end
 function jacobian_gradient_current(fwalker, model, eref, x′, ψt′,  τ)
     walker = fwalker.walker
 
-    #x = walker.configuration_old
     x = walker.configuration_old
+    #x = walker.configuration
 
     ψ = model.wave_function.value(x)
     ∇ψ = model.wave_function.gradient(x)
@@ -272,8 +301,8 @@ end
 function jacobian_gradient_current_approx(fwalker, model, eref, x′, ψt′,  τ)
     walker = fwalker.walker
 
-    #x = walker.configuration_old
     x = walker.configuration_old
+    #x = walker.configuration
 
     ψ = model.wave_function.value(x)
     ∇ψ = model.wave_function.gradient(x)

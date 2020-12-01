@@ -20,14 +20,14 @@ hamiltonian_recompute′(ψ, x) = -0.5*ψ.laplacian(x)
 include("forceutil.jl")
 
 # DMC settings
-τ = 0.25e-2
-nwalkers = 10
-num_blocks = 4000
+τ = 5e-2
+nwalkers = 5
+num_blocks = 40000
 #nwalkers = 2
 #num_blocks = 5000
-steps_per_block = max(1, trunc(Int64, 1/τ))
-#neq = num_blocks ÷ 10
-neq = 10
+#steps_per_block = max(1, trunc(Int64, 1/τ))
+steps_per_block = 500
+neq = num_blocks ÷ 10
 lag = trunc(Int64, steps_per_block)
 #lag = 100
 eref = 1.715
@@ -97,7 +97,7 @@ observables = OrderedDict(
 rng = MersenneTwister(16224267)
 
 # create "Fat" walkers
-walkers = QuantumMonteCarlo.generate_walkers(nwalkers, ψtrial, rng, Uniform(-0.5, 0.5), 2)
+walkers = QuantumMonteCarlo.generate_walkers(nwalkers, ψtrial, rng, Uniform(-0.1, 0.1), 2)
 
 fat_walkers = [QuantumMonteCarlo.FatWalker(
     walker, 
@@ -147,5 +147,5 @@ energies, errors = QuantumMonteCarlo.run_dmc!(
     brancher=stochastic_reconfiguration_pyqmc!,
     outfile="ellipse_dmc.hdf5",
     verbosity=:loud,
-    branchtime=steps_per_block ÷ 10,
+    branchtime=steps_per_block ÷ 100,
 );

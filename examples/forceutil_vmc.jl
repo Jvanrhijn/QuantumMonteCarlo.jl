@@ -120,10 +120,12 @@ function greens_function_gradient(fwalker, model, eref, x′, ψt′, τ; usepq=
     ψnew′ = ψt′.value(x′)
 
     # drift velocity
-    #v(r) = ψ.gradient(r) / ψ.value(r)
-    #vs(r) = ψt′.gradient(r) / ψt′.value(r)
+    vbare(r) = ψ.gradient(r) / ψ.value(r)
+    vsbare(r) = ψt′.gradient(r) / ψt′.value(r)
     v(r) = QuantumMonteCarlo.cutoff_velocity(ψ.gradient(r) / ψ.value(r), τ)
     vs(r) = QuantumMonteCarlo.cutoff_velocity(ψt′.gradient(r) / ψt′.value(r), τ)
+    f(r) = norm(v(r)) / norm(vbare(r))
+    fs(r) = norm(vs(r)) / norm(vsbare(r))
 
     # drift-diffusion greens function
     t(r′, r) = exp(-norm(r′ - r - v(r)*τ)^2 / 2τ)
@@ -149,22 +151,31 @@ function greens_function_gradient(fwalker, model, eref, x′, ψt′, τ; usepq=
         x̅′ = x′
     end
 
+    ξ = x′ - x - v(x)*τ
+    ∂ₐv = (vs(x̅) - v(x))
+    dx̅s = x̅′ - x̅
+    dx = x′ - x
+    ∂ₐx̅ = dx̅s - dx
+
+    ∂ₐlnTf = dot(ξ, ∂ₐv) - 1/τ * dot(ξ, ∂ₐx̅)
+    acc = p(x′, x)
+
     if usepq
+        #deriv = logts(x̅′, x̅) - logt(x′, x)
+        deriv = (ts(x̅′, x̅) - t(x′, x)) / t(x′, x)
         if accepted
-            deriv = log(ps(x̅′, x̅)) - log(p(x′, x))
-            deriv += logts(x̅′, x̅) - logt(x′, x)
-            deriv /= da
+            #deriv += acc < 1.0 ? log(ps(x̅′, x̅)) - log(p(x′, x)) : 0.0
+            deriv += acc < 1.0 ? (ps(x̅′, x̅) - p(x′, x)) / acc : 0.0
         elseif node_reject
-            deriv = logts(x̅′, x̅) - logt(x′, x)
-            deriv /= da
-            #deriv = 0
+            nothing
         else
-            deriv = log(qs(x̅′, x̅)) - log(q(x′, x))
-            deriv += logts(x̅′, x̅) - logt(x′, x)
-            deriv /= da
+            deriv += log(qs(x̅′, x̅)) - log(q(x′, x))
+            #deriv += (qs(x̅′, x̅) - q(x′, x)) / (1 - acc)
+            #deriv += acc / (1 - acc) * (log(ps(x̅′, x̅)) - log(p(x′, x)))
         end
+        deriv /= da
     else
-        deriv = accepted ? ts(x̅′, x̅) - t(x′, x) : 0.0
+        deriv = ∂ₐlnTf
         deriv /= da
     end
 
