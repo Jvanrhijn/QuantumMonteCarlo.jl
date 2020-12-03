@@ -4,9 +4,16 @@ using ForwardDiff
 # All functions needed for calculating forces
 function local_energy(fwalker, model, eref, x′)
     ψ = model.wave_function
-    x = fwalker.walker.configuration_old
+    x = fwalker.walker.configuration
     model.hamiltonian_recompute(ψ, x) / ψ.value(x)
 end
+
+function local_energy_new(fwalker, model, eref, x′)
+    ψ = model.wave_function
+    x = fwalker.walker.configuration
+    model.hamiltonian_recompute(ψ, x) / ψ.value(x)
+end
+
 
 function cutoff_tanh(d; a=0.05)
     b = a/5
@@ -21,7 +28,7 @@ function node_warp(x, ψ, ∇ψ, ψ′, ∇ψ′, τ; warpfac=1)
 
     n′ = ∇ψ′ / norm(∇ψ′)
     n = ∇ψ / norm(∇ψ)
-    u, uderiv = cutoff_tanh(d; a=warpfac*sqrt(τ))
+    u, uderiv = cutoff_tanh(d; a=0.1warpfac*sqrt(τ))
     x̅ = x .+ (d - d′) * u * sign(ψ′) * n′
    
     # approximate jacobian
@@ -35,7 +42,7 @@ function node_warp_exact_jacobian(x, ψ, ψ′, τ; warpfac=1)
     d′(y) = abs(ψ′.value(y)) / norm(ψ′.gradient(y))
     n′(y) = ψ′.gradient(y) / norm(ψ′.gradient(y))
 
-    warp(y::AbstractVector) = y + (d(y) - d′(y)) * n′(y) * sign(ψ′.value(y)) * cutoff_tanh(d(y), a=warpfac*sqrt(τ))[1]
+    warp(y::AbstractVector) = y + (d(y) - d′(y)) * n′(y) * sign(ψ′.value(y)) * cutoff_tanh(d(y), a=0.1warpfac*sqrt(τ))[1]
 
     x̅ = warp(x)
 
@@ -49,7 +56,7 @@ end
 
 function local_energy_gradient(fwalker, model, eref, x′, ψt′, τ; warp=false, warpfac=1)
     walker = fwalker.walker
-    x = walker.configuration_old
+    x = walker.configuration
     ψ = model.wave_function
     ∇ψ = model.wave_function.gradient
     ψ′ = ψt′
@@ -73,7 +80,7 @@ end
 
 function local_energy_gradient_pathak(fwalker, model, eref, x′, ψt′, τ; warp=false, ϵ=1e-1)
     walker = fwalker.walker
-    x = walker.configuration_old
+    x = walker.configuration
     ψ = model.wave_function
     ∇ψ = model.wave_function.gradient
     ψ′ = ψt′
@@ -144,11 +151,14 @@ function greens_function_gradient(fwalker, model, eref, x′, ψt′, τ; usepq=
 
     # perform warp
     if warp
-        x̅, _ = node_warp(x, ψ.value(x), ψ.gradient(x), ψt′.value(x), ψt′.gradient(x), τ, warpfac=warpfac)
-        x̅′, _ = node_warp(x′, ψ.value(x′), ψ.gradient(x′), ψt′.value(x′), ψt′.gradient(x′), τ, warpfac=warpfac)
+        #x̅, jac = node_warp(x, ψ.value(x), ψ.gradient(x), ψt′.value(x), ψt′.gradient(x), τ, warpfac=warpfac)
+        x̅, jac = node_warp_exact_jacobian(x, model.wave_function, ψt′, τ, warpfac=warpfac)
+        #x̅′, jac′ = node_warp(x′, ψ.value(x′), ψ.gradient(x′), ψt′.value(x′), ψt′.gradient(x′), τ, warpfac=warpfac)
+        x̅′, jac′ = node_warp_exact_jacobian(x′, model.wave_function, ψt′, τ, warpfac=warpfac)
     else
         x̅ = x
         x̅′ = x′
+        jac, jac′ = 1, 1
     end
 
     ξ = x′ - x - v(x)*τ
@@ -161,32 +171,28 @@ function greens_function_gradient(fwalker, model, eref, x′, ψt′, τ; usepq=
     acc = p(x′, x)
 
     if usepq
-        #deriv = logts(x̅′, x̅) - logt(x′, x)
-        deriv = (ts(x̅′, x̅) - t(x′, x)) / t(x′, x)
+        deriv = logts(x̅′, x̅) - logt(x′, x)
         if accepted
-            #deriv += acc < 1.0 ? log(ps(x̅′, x̅)) - log(p(x′, x)) : 0.0
-            deriv += acc < 1.0 ? (ps(x̅′, x̅) - p(x′, x)) / acc : 0.0
+            deriv += acc < 1.0 ? log(ps(x̅′, x̅)) - log(p(x′, x)) : 0.0
         elseif node_reject
             nothing
         else
-            deriv += log(qs(x̅′, x̅)) - log(q(x′, x))
-            #deriv += (qs(x̅′, x̅) - q(x′, x)) / (1 - acc)
-            #deriv += acc / (1 - acc) * (log(ps(x̅′, x̅)) - log(p(x′, x)))
+            deriv += (log(qs(x̅′, x̅)) - log(q(x′, x)))
         end
         deriv /= da
     else
-        deriv = ∂ₐlnTf
+        deriv = accepted ? ∂ₐlnTf : 0.0
         deriv /= da
     end
 
-    return deriv
+    return deriv + log(abs(jac′)) / da + 0*log(abs(jac)) / da
 
 end
 
 function jacobian_gradient_previous(fwalker, model, eref, x′, ψt′,  τ; warpfac=1)
     walker = fwalker.walker
 
-    x = walker.configuration_old
+    x = walker.configuration
 
     ψ = model.wave_function.value(x)
     ∇ψ = model.wave_function.gradient(x)
@@ -203,8 +209,7 @@ end
 function jacobian_gradient_current(fwalker, model, eref, x′, ψt′,  τ; warpfac=1)
     walker = fwalker.walker
 
-    x = walker.configuration_old
-    #x = walker.configuration
+    x = walker.configuration
 
     ψ = model.wave_function.value(x)
     ∇ψ = model.wave_function.gradient(x)
@@ -212,7 +217,6 @@ function jacobian_gradient_current(fwalker, model, eref, x′, ψt′,  τ; warp
     ψ′ = ψt′.value(x)
     ∇ψ′ = ψt′.gradient(x)
 
-    #x̅, jac = node_warp(x, ψ, ∇ψ, ψ′, ∇ψ′, τ)
     x̅, jac = node_warp_exact_jacobian(x, model.wave_function, ψt′, τ, warpfac=warpfac)
 
     return log(abs(jac)) / da
@@ -221,7 +225,7 @@ end
 function jacobian_gradient_previous_approx(fwalker, model, eref, x′, ψt′,  τ; warpfac=1)
     walker = fwalker.walker
 
-    x = walker.configuration_old
+    x = walker.configuration
 
     ψ = model.wave_function.value(x)
     ∇ψ = model.wave_function.gradient(x)
@@ -237,7 +241,7 @@ end
 function jacobian_gradient_current_approx(fwalker, model, eref, x′, ψt′,  τ; warpfac=1)
     walker = fwalker.walker
 
-    x = walker.configuration_old
+    x = walker.configuration
     #x = walker.configuration
 
     ψ = model.wave_function.value(x)
@@ -254,7 +258,7 @@ end
 function log_psi_gradient(fwalker, model, eref, x′, ψt′, τ; warp=false, warpfac=1)
     walker = fwalker.walker
 
-    x = walker.configuration_old
+    x = walker.configuration
 
     ψ = model.wave_function.value(x)
     ψ′ = ψt′.value(x)
@@ -277,7 +281,7 @@ end
 function log_psi_gradient_pathak(fwalker, model, eref, x′, ψt′, τ; warp=false, ϵ=1e-1)
     walker = fwalker.walker
 
-    x = walker.configuration_old
+    x = walker.configuration
 
     ψ = model.wave_function.value(x)
     ψ′ = ψt′.value(x)

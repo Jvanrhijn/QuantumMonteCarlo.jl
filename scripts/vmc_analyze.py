@@ -6,10 +6,16 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 import h5py
+import matplotlib
+
+font = {'family' : 'normal',
+        'size'   : 16}
+
+matplotlib.rc('font', **font)
 
 
 def plot_force_data_trace(flhf, flpulay, flhf_warp, flpulay_warp):
-    fig, axes = plt.subplots(nrows=1, ncols=3, figsize=(15, 5), sharey=True)
+    fig, axes = plt.subplots(nrows=1, ncols=3, figsize=(22, 5), sharey=True)
     axes[0].plot(flhf, label="No warp")
     axes[0].plot(flhf_warp, label="warp")
 
@@ -19,9 +25,18 @@ def plot_force_data_trace(flhf, flpulay, flhf_warp, flpulay_warp):
     axes[2].plot(flhf + flpulay, label="No warp")
     axes[2].plot(flhf_warp + flpulay_warp, label="warp")
     titles = ["Hellmann-Feynman Force", "Pulay Force", "Total Force"]
+
+    axes[0].set_ylabel("Block average force")
+
     for title, ax in zip(titles, axes):
         ax.legend(); ax.grid()
         ax.set_title(title)
+        ax.ticklabel_format(style="sci", axis="both", scilimits=(0, 0))
+        ax.set_xlabel("Monte Carlo block")
+
+    axes[1].legend(loc='upper center', bbox_to_anchor=(0.5, 0.9),
+          ncol=3, fancybox=True, shadow=True)
+
     return fig, axes
 
 
@@ -52,7 +67,8 @@ def plot_errors_over_time(*forces, labels=[], weights=None, npoints=20):
 
     ns = np.linspace(1, len(forces[0][0]), npoints)
 
-    fig, axes = plt.subplots(nrows=1, ncols=3, figsize=(15, 5), sharey=False)
+    fig, axes = plt.subplots(nrows=1, ncols=3, figsize=(22, 5), sharey=False)
+    axes[0].set_ylabel("Error in force")
 
     for i, (fhf, fp) in enumerate(forces):
 
@@ -67,11 +83,14 @@ def plot_errors_over_time(*forces, labels=[], weights=None, npoints=20):
         axes[2].plot(ns, total_errs, marker='o', label=labels[i])
         axes[2].set_title("Total force")
 
-    axes[0].grid()
-    axes[1].grid()
-    axes[2].grid()
+    for ax in axes:
+        ax.grid()
+        ax.ticklabel_format(style="sci", axis="both", scilimits=(0, 0))
+        ax.set_xlabel("Monte Carlo block")
 
-    axes[2].legend(bbox_to_anchor=(1.02, 1), loc="upper left")
+    #axes[2].legend(bbox_to_anchor=(1.02, 1), loc="upper left")
+    axes[1].legend(loc='upper center', bbox_to_anchor=(0.5, 0.9),
+          ncol=3, fancybox=True, shadow=True)
 
     return fig, axes
 
@@ -84,7 +103,10 @@ def plot_forces_over_time(*forces, labels=[], weights=None, npoints=50):
 
     ns = np.linspace(1, len(forces[0][0]), npoints)
 
-    fig, axes = plt.subplots(nrows=1, ncols=3, figsize=(15, 5), sharey=False)
+    fig, axes = plt.subplots(nrows=1, ncols=3, figsize=(20, 5), sharey=False)
+
+    axes[2].plot(ns, [2.5]*len(ns), label="Exact", color="black", linestyle='--')
+    axes[0].set_ylabel("Force")
 
     for i, (fhf, fp) in enumerate(forces):
 
@@ -94,26 +116,29 @@ def plot_forces_over_time(*forces, labels=[], weights=None, npoints=50):
 
         #axes[0].errorbar(ns, hf_means, yerr=hf_errs, marker='o', label=labels[i])
         axes[0].fill_between(ns, hf_means - hf_errs, hf_means + hf_errs, alpha=0.2)#, yerr=hf_errs, marker='o', label=labels[i])
-        axes[0].plot(ns, hf_means)#, yerr=hf_errs, marker='o', label=labels[i])
+        axes[0].plot(ns, hf_means, label=labels[i])#, yerr=hf_errs, marker='o', label=labels[i])
         axes[0].set_title("Hellmann-Feynman term")
 
         #axes[1].errorbar(ns, pulay_means, yerr=pulay_errs, marker='o', label=labels[i])
         axes[1].fill_between(ns, pulay_means - pulay_errs, pulay_means + pulay_errs, alpha=0.2)#, yerr=hf_errs, marker='o', label=labels[i])
-        axes[1].plot(ns, pulay_means)#, yerr=hf_errs, marker='o', label=labels[i])
+        axes[1].plot(ns, pulay_means, label=labels[i])#, yerr=hf_errs, marker='o', label=labels[i])
         axes[1].set_title("Pulay term")
 
         #axes[2].errorbar(ns, total_means, yerr=total_errs, marker='o', label=labels[i])
         axes[2].fill_between(ns, total_means - total_errs, total_means + total_errs, alpha=0.2)#, yerr=hf_errs, marker='o', label=labels[i])
-        axes[2].plot(ns, total_means)#, yerr=hf_errs, marker='o', label=labels[i])
+        axes[2].plot(ns, total_means, label=labels[i])#, yerr=hf_errs, marker='o', label=labels[i])
         axes[2].set_title("Total force")
 
-    axes[2].plot(ns, [3.43196]*len(ns), label="PES", color="black")
+    #axes[2].plot(ns, [3.43196]*len(ns), label="PES", color="black")
 
-    axes[0].grid()
-    axes[1].grid()
-    axes[2].grid()
+    for ax in axes:
+        ax.set_xlabel("Monte Carlo block")
+        ax.grid()
+        ax.ticklabel_format(style="sci", axis="x", scilimits=(0, 0))
 
-    axes[2].legend(bbox_to_anchor=(1.02, 1), loc="upper left")
+    #axes[2].legend(bbox_to_anchor=(1.02, 1), loc="upper left")
+    axes[1].legend(loc='upper center', bbox_to_anchor=(0.5, 0.2),
+          ncol=3, fancybox=True, shadow=True)
 
     return fig, axes
 
@@ -160,7 +185,7 @@ def compute_forces(fpath):
     el_times_psilogderiv = data["Local energy * grad log psi"][()][1:]
     el_times_psilogderiv_warp = data["Local energy * grad log psi (warp)"][()][1:]
 
-    warpfacs = [0.1, 0.2, 0.4, 0.6, 0.8, 1.0]
+    warpfacs = [0.02, 0.04, 0.06, 0.08, 0.1, 0.2, 0.4, 0.6, 0.8, 1.0]
     force_pulay_pathaks = []
     force_hf_warp_approxs = []
     force_pulay_warp_approxs = []
@@ -198,7 +223,7 @@ def compute_forces(fpath):
 
     force_pulay_exact_warp = -(
                 (el_times_gderiv_sum_warp - energy*gderiv_sum_warp) \
-            +   (el_times_jderiv_sum - energy*jderiv_sum) \
+            +   0*(el_times_jderiv_sum - energy*jderiv_sum) \
             +   0*(el_times_jac_logderiv - energy*jac_logderiv) \
             )
 
@@ -209,13 +234,13 @@ def compute_forces(fpath):
 
     force_pulay_exact_warp_pq = -(
                 el_times_gderiv_sum_warp_pq - energy*gderiv_sum_warp_pq \
-            +   (el_times_jderiv_sum - energy*jderiv_sum) \
+            +   0*(el_times_jderiv_sum - energy*jderiv_sum) \
             +   0*(el_times_jac_logderiv - energy*jac_logderiv) \
             )
 
     force_pulay_exact_warp_pq_approx = -(
                 el_times_gderiv_sum_warp_pq - energy*gderiv_sum_warp_pq \
-            +   el_times_jderiv_sum_approx - energy*jderiv_sum_approx \
+            +   0*(el_times_jderiv_sum_approx - energy*jderiv_sum_approx) \
             +   0*(el_times_jac_logderiv_approx - energy*jac_logderiv_approx) \
             )
 
@@ -386,7 +411,8 @@ plot_errors_over_time(
 )
 
 
-plot_force_data_trace(force_hf, force_pulay_exact_pq, force_hf_warp, force_pulay_exact_warp_pq)
+plot_force_data_trace(force_hf, force_pulay_, force_hf_warp, force_pulay__warp)
+#plot_force_data_trace(force_hf, force_pulay_exact, force_hf_warp, force_pulay_exact_warp)
 
 fs_pathak = [np.average(force_hf + fp, weights=weights) for fp in force_pulay_pathaks]
 errs_pathak = [error(force_hf + fp, weights=weights) for fp in force_pulay_pathaks]
@@ -400,9 +426,12 @@ plt.errorbar(warpfacs, fs_pathak, yerr=errs_pathak, marker="o", label="Pathak")
 plt.errorbar(warpfacs, fs_approx, yerr=errs_approx, marker="o", label="Warp, approx. J")
 from scipy.optimize import curve_fit
 lin = lambda x, a, b: a*x + b
-#plt.plot([0, max(warpfacs)], [3.43196]*2, "black")
+plt.plot([0, max(warpfacs)], [2.5]*2, "black")
 plt.xlim(0)
 plt.grid()
 plt.legend()
+
+#plt.gcf().subplots_adjust(right=0.15)
+plt.tight_layout()
 
 plt.show()

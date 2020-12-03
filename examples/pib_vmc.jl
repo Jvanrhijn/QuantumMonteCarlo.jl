@@ -20,13 +20,15 @@ hamiltonian_recompute′(ψ, x) = -0.5*ψ.laplacian(x)
 include("forceutil_vmc.jl")
 
 # VMC settings
-τ = 1e-1
+τ = 10e-2
 nwalkers = 1
-num_blocks = 40000
+num_blocks = 10000
 steps_per_block = 1000
-neq = num_blocks ÷ 10 
+#neq = num_blocks ÷ 10 
+neq = 1
 #lag = trunc(Int64, steps_per_block)
-lag = steps_per_block
+#lag = steps_per_block
+lag = 100
 eref = 5.0/(2a)^2
 
 # Trial wave function
@@ -57,7 +59,7 @@ model = Model(
     ψtrial,
 )
 
-warp_factors = [0.1, 0.2, 0.4, 0.6, 0.8, 1.0]
+warp_factors = [0.02, 0.04, 0.06, 0.08, 0.1, 0.2, 0.4, 0.6, 0.8, 1.0]
 approximate_warp_functions = [
 			      [
 			       "grad el (warp) ($wf)" => (fwalker, model, eref, xp) -> local_energy_gradient(fwalker, model, eref, xp, ψtrial′, τ; warp=true, warpfac=wf),
@@ -73,6 +75,7 @@ approximate_warp_functions = OrderedDict(vcat(approximate_warp_functions...))
 observables = OrderedDict(
     # Local energy
     "Local energy" => local_energy,
+    "Local energy new" => local_energy_new,
     # Gradients of local energy
     "grad el" => (fwalker, model, eref, xp) -> local_energy_gradient(fwalker, model, eref, xp, ψtrial′, τ; warp=false),
     "grad el (warp)" => (fwalker, model, eref, xp) -> local_energy_gradient(fwalker, model, eref, xp, ψtrial′, τ; warp=true),
@@ -110,9 +113,14 @@ fat_walkers = [QuantumMonteCarlo.FatWalker(
         "sum grad log j" => CircularBuffer(lag),
         "sum grad log j approx" => CircularBuffer(lag),
     ),
-    [
-        ("Local energy", o) for o in keys(observables)
-    ]
+    vcat(
+        [
+            ("Local energy", o) for o in keys(observables)
+        ], 
+        [
+            ("Local energy new", o) for o in keys(observables)
+        ] 
+    )
     ) for walker in walkers
 ]
 

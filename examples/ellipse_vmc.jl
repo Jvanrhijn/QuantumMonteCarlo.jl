@@ -23,9 +23,11 @@ include("forceutil_vmc.jl")
 τ = 5e-2
 nwalkers = 1
 num_blocks = 10000
-steps_per_block = 100
+steps_per_block = 1000
 neq = num_blocks ÷ 10
-lag = trunc(Int64, steps_per_block)
+neq = 1
+lag = #trunc(Int64, steps_per_block)
+lag = 100
 
 α(a) = a*cosh(1)
 β(a) = a*sinh(1)
@@ -60,7 +62,7 @@ model = Model(
     ψtrial,
 )
 
-warp_factors = [0.1, 0.2, 0.4, 0.6, 0.8, 1.0]
+warp_factors = [0.02, 0.04, 0.06, 0.08, 0.1, 0.2, 0.4, 0.6, 0.8, 1.0]
 approximate_warp_functions = [
 			      [
 			       "grad el (warp) ($wf)" => (fwalker, model, eref, xp) -> local_energy_gradient(fwalker, model, eref, xp, ψtrial′, τ; warp=true, warpfac=wf),
