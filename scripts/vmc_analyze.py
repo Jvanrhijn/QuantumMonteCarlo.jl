@@ -15,7 +15,7 @@ matplotlib.rc('font', **font)
 
 
 def plot_force_data_trace(flhf, flpulay, flhf_warp, flpulay_warp):
-    fig, axes = plt.subplots(nrows=1, ncols=3, figsize=(22, 5), sharey=True)
+    fig, axes = plt.subplots(nrows=1, ncols=3, figsize=(15, 5), sharey=True)
     axes[0].plot(flhf, label="No warp")
     axes[0].plot(flhf_warp, label="warp")
 
@@ -29,13 +29,12 @@ def plot_force_data_trace(flhf, flpulay, flhf_warp, flpulay_warp):
     axes[0].set_ylabel("Block average force")
 
     for title, ax in zip(titles, axes):
-        ax.legend(); ax.grid()
+        ax.grid()
         ax.set_title(title)
         ax.ticklabel_format(style="sci", axis="both", scilimits=(0, 0))
         ax.set_xlabel("Monte Carlo block")
 
-    axes[1].legend(loc='upper center', bbox_to_anchor=(0.5, 0.9),
-          ncol=3, fancybox=True, shadow=True)
+    axes[2].legend(fancybox=True, shadow=True)
 
     return fig, axes
 
@@ -67,7 +66,7 @@ def plot_errors_over_time(*forces, labels=[], weights=None, npoints=20):
 
     ns = np.linspace(1, len(forces[0][0]), npoints)
 
-    fig, axes = plt.subplots(nrows=1, ncols=3, figsize=(22, 5), sharey=False)
+    fig, axes = plt.subplots(nrows=1, ncols=3, figsize=(15, 5), sharey=False)
     axes[0].set_ylabel("Error in force")
 
     for i, (fhf, fp) in enumerate(forces):
@@ -88,9 +87,7 @@ def plot_errors_over_time(*forces, labels=[], weights=None, npoints=20):
         ax.ticklabel_format(style="sci", axis="both", scilimits=(0, 0))
         ax.set_xlabel("Monte Carlo block")
 
-    #axes[2].legend(bbox_to_anchor=(1.02, 1), loc="upper left")
-    axes[1].legend(loc='upper center', bbox_to_anchor=(0.5, 0.9),
-          ncol=3, fancybox=True, shadow=True)
+    axes[2].legend(fancybox=True, shadow=True)
 
     return fig, axes
 
@@ -103,8 +100,9 @@ def plot_forces_over_time(*forces, labels=[], weights=None, npoints=50):
 
     ns = np.linspace(1, len(forces[0][0]), npoints)
 
-    fig, axes = plt.subplots(nrows=1, ncols=3, figsize=(20, 5), sharey=False)
+    fig, axes = plt.subplots(nrows=1, ncols=3, figsize=(15, 5), sharey=False)
 
+    #axes[2].plot(ns, [3.43196]*len(ns), label="Exact", color="black", linestyle='--')
     axes[2].plot(ns, [2.5]*len(ns), label="Exact", color="black", linestyle='--')
     axes[0].set_ylabel("Force")
 
@@ -136,9 +134,7 @@ def plot_forces_over_time(*forces, labels=[], weights=None, npoints=50):
         ax.grid()
         ax.ticklabel_format(style="sci", axis="x", scilimits=(0, 0))
 
-    #axes[2].legend(bbox_to_anchor=(1.02, 1), loc="upper left")
-    axes[1].legend(loc='upper center', bbox_to_anchor=(0.5, 0.2),
-          ncol=3, fancybox=True, shadow=True)
+    axes[2].legend(fancybox=True, shadow=True)
 
     return fig, axes
 
@@ -185,7 +181,7 @@ def compute_forces(fpath):
     el_times_psilogderiv = data["Local energy * grad log psi"][()][1:]
     el_times_psilogderiv_warp = data["Local energy * grad log psi (warp)"][()][1:]
 
-    warpfacs = [0.02, 0.04, 0.06, 0.08, 0.1, 0.2, 0.4, 0.6, 0.8, 1.0]
+    warpfacs = [0.02, 0.04, 0.06, 0.08, 0.1, 0.2, 0.4, 0.6, 0.8, 1.0][4:]
     force_pulay_pathaks = []
     force_hf_warp_approxs = []
     force_pulay_warp_approxs = []
@@ -367,67 +363,80 @@ print(f"Exact force:                                  {3.43196:.5f}")
 
 
 plot_forces_over_time(
-    #(force_hf, force_pulay_), 
+    (force_hf, force_pulay_), 
     #(force_hf_pathak, force_pulay_pathak), 
-    #(force_hf_warp, force_pulay__warp), 
+    (force_hf_warp, force_pulay__warp), 
+    #(force_hf_warp, force_pulay__warp_approx), 
     #(force_hf, force_pulay_exact), 
     #(force_hf_warp, force_pulay_exact_warp), 
-    (force_hf, force_pulay_exact_pq), 
-    (force_hf_warp, force_pulay_exact_warp_pq), 
+    #(force_hf, force_pulay_exact_pq), 
+    #(force_hf_warp, force_pulay_exact_warp_pq), 
     #(force_hf_warp, force_pulay_exact_warp_pq_approx), 
     labels=[
-        #"Not warped",  
+        "Not warped",  
         #"Pathak", 
-        #"Warped", 
+        "Warped", 
+        #"Warped, approx. J", 
         #"Projector, naive",
         #"Projector, naive, warp",
-        "Projector", 
-        "Projector, warped", 
+        #"Projector", 
+        #"Projector, warped", 
         #"Projector, approx. J"
     ], 
     weights=weights
 )
+plt.tight_layout()
 
 plot_errors_over_time(
-    #(force_hf, force_pulay_), 
+    (force_hf, force_pulay_), 
     #(force_hf_pathak, force_pulay_pathak), 
-    #(force_hf_warp, force_pulay__warp), 
+    (force_hf_warp, force_pulay__warp), 
+    #(force_hf_warp, force_pulay__warp_approx), 
     #(force_hf, force_pulay_exact), 
     #(force_hf_warp, force_pulay_exact_warp), 
-    (force_hf, force_pulay_exact_pq), 
-    (force_hf_warp, force_pulay_exact_warp_pq), 
+    #(force_hf, force_pulay_exact_pq), 
+    #(force_hf_warp, force_pulay_exact_warp_pq), 
     #(force_hf_warp, force_pulay_exact_warp_pq_approx), 
     labels=[
-        #"Not warped", 
+        "Not warped", 
         #"Pathak", 
-        #"Warped", 
+        "Warped", 
+        #"Warped, approx. J", 
         #"Projector, naive",
         #"Projector, naive, warp",
-        "Projector", 
-        "Projector, warped", 
+        #"Projector", 
+        #"Projector, warped", 
         #"Projector, approx. J"
     ], 
     weights=weights
 )
+plt.tight_layout()
 
 
 plot_force_data_trace(force_hf, force_pulay_, force_hf_warp, force_pulay__warp)
-#plot_force_data_trace(force_hf, force_pulay_exact, force_hf_warp, force_pulay_exact_warp)
+plt.tight_layout()
 
-fs_pathak = [np.average(force_hf + fp, weights=weights) for fp in force_pulay_pathaks]
-errs_pathak = [error(force_hf + fp, weights=weights) for fp in force_pulay_pathaks]
+fs_pathak = np.array([np.average(force_hf + fp, weights=weights) for fp in force_pulay_pathaks])
+errs_pathak = np.array([error(force_hf + fp, weights=weights) for fp in force_pulay_pathaks])
 
-fs_approx = [np.average(fhf + fp, weights=weights) for (fhf, fp) in zip(force_hf_warp_approxs, force_pulay__warp_approxs)]
-errs_approx = [error(fhf + fp, weights=weights) for (fhf, fp) in zip(force_hf_warp_approxs, force_pulay__warp_approxs)]
+fs_approx = np.array([np.average(fhf + fp, weights=weights) for (fhf, fp) in zip(force_hf_warp_approxs, force_pulay__warp_approxs)])
+errs_approx = np.array([error(fhf + fp, weights=weights) for (fhf, fp) in zip(force_hf_warp_approxs, force_pulay__warp_approxs)])
 
 
 plt.figure()
-plt.errorbar(warpfacs, fs_pathak, yerr=errs_pathak, marker="o", label="Pathak")
-plt.errorbar(warpfacs, fs_approx, yerr=errs_approx, marker="o", label="Warp, approx. J")
+plt.fill_between(warpfacs, fs_pathak - errs_pathak, fs_pathak + errs_pathak, alpha=0.2)
+plt.plot(warpfacs, fs_pathak, marker="o", label="Pathak")
+
+plt.fill_between(warpfacs, fs_approx - errs_approx, fs_approx + errs_approx, alpha=0.2)
+plt.plot(warpfacs, fs_approx, marker="o", label="Warped force, approx. J")
+
 from scipy.optimize import curve_fit
 lin = lambda x, a, b: a*x + b
-plt.plot([0, max(warpfacs)], [2.5]*2, "black")
+plt.plot([0, max(warpfacs)], [3.43196]*2, "black", linestyle="--")
+#plt.plot([0, max(warpfacs)], [2.5]*2, "black")
 plt.xlim(0)
+plt.xlabel("Cutoff scale")
+plt.ylabel("Force estimate")
 plt.grid()
 plt.legend()
 

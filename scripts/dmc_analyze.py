@@ -15,7 +15,7 @@ matplotlib.rc('font', **font)
 
 
 def plot_force_data_trace(flhf, flpulay, flhf_warp, flpulay_warp):
-    fig, axes = plt.subplots(nrows=1, ncols=3, figsize=(22, 5), sharey=True)
+    fig, axes = plt.subplots(nrows=1, ncols=3, figsize=(15, 5), sharey=True)
     axes[0].plot(flhf, label="No warp")
     axes[0].plot(flhf_warp, label="warp")
 
@@ -34,8 +34,7 @@ def plot_force_data_trace(flhf, flpulay, flhf_warp, flpulay_warp):
         ax.ticklabel_format(style="sci", axis="both", scilimits=(0, 0))
         ax.set_xlabel("Monte Carlo block")
 
-    axes[1].legend(loc='upper center', bbox_to_anchor=(0.5, 0.9),
-          ncol=3, fancybox=True, shadow=True)
+    axes[2].legend(fancybox=True, shadow=True)
 
     return fig, axes
 
@@ -67,7 +66,7 @@ def plot_errors_over_time(*forces, labels=[], weights=None, npoints=20):
 
     ns = np.linspace(1, len(forces[0][0]), npoints)
 
-    fig, axes = plt.subplots(nrows=1, ncols=3, figsize=(22, 5), sharey=False)
+    fig, axes = plt.subplots(nrows=1, ncols=3, figsize=(15, 5), sharey=False)
     axes[0].set_ylabel("Error in force")
 
     for i, (fhf, fp) in enumerate(forces):
@@ -87,8 +86,7 @@ def plot_errors_over_time(*forces, labels=[], weights=None, npoints=20):
         ax.grid()
         ax.ticklabel_format(style="sci", axis="both", scilimits=(0, 0))
         ax.set_xlabel("Monte Carlo block")
-    axes[1].legend(loc='upper center', bbox_to_anchor=(0.5, 0.9),
-          ncol=3, fancybox=True, shadow=True)
+    axes[2].legend(fancybox=True, shadow=True)
 
     return fig, axes
 
@@ -101,8 +99,7 @@ def plot_forces_over_time(*forces, labels=[], weights=None, npoints=50):
 
     ns = np.linspace(1, len(forces[0][0]), npoints)
 
-    fig, axes = plt.subplots(nrows=1, ncols=3, figsize=(22, 5), sharey=False)
-    #axes[2].plot(ns, [3.304]*len(ns), label="PES", color="black")
+    fig, axes = plt.subplots(nrows=1, ncols=3, figsize=(15, 5), sharey=False)
     axes[2].plot(ns, [np.pi**2/4]*len(ns), label="Exact", color="black", linestyle="--")
     axes[0].set_ylabel("Force")
 
@@ -112,19 +109,11 @@ def plot_forces_over_time(*forces, labels=[], weights=None, npoints=50):
         pulay_means, pulay_errs = error_over_time(fp, npoints, weights=weights)
         total_means, total_errs = error_over_time(fhf + fp, npoints, weights=weights)
 
-        #axes[0].errorbar(ns, hf_means, yerr=hf_errs, marker='o', label=labels[i])
-        #axes[0].set_title("Hellmann-Feynman term")
-        #axes[1].errorbar(ns, pulay_means, yerr=pulay_errs, marker='o', label=labels[i])
-        #axes[1].set_title("Pulay term")
-        #axes[2].errorbar(ns, total_means, yerr=total_errs, marker='o', label=labels[i])
-        #axes[2].set_title("Total force")
 
-        #axes[0].errorbar(ns, hf_means, yerr=hf_errs, marker='o', label=labels[i])
-        axes[0].fill_between(ns, hf_means - hf_errs, hf_means + hf_errs, alpha=0.2)#, yerr=hf_errs, marker='o', label=labels[i])
-        axes[0].plot(ns, hf_means, label=labels[i])#, yerr=hf_errs, marker='o', label=labels[i])
+        axes[0].fill_between(ns, hf_means - hf_errs, hf_means + hf_errs, alpha=0.2)
+        axes[0].plot(ns, hf_means, label=labels[i])
         axes[0].set_title("Hellmann-Feynman term")
 
-        #axes[1].errorbar(ns, pulay_means, yerr=pulay_errs, marker='o', label=labels[i])
         axes[1].fill_between(ns, pulay_means - pulay_errs, pulay_means + pulay_errs, alpha=0.2)
         axes[1].plot(ns, pulay_means, label=labels[i])
         axes[1].set_title("Pulay term")
@@ -138,8 +127,8 @@ def plot_forces_over_time(*forces, labels=[], weights=None, npoints=50):
         ax.grid()
         ax.ticklabel_format(style="sci", axis="both", scilimits=(0, 0))
         ax.set_xlabel("Monte Carlo block")
-    axes[1].legend(loc='upper center', bbox_to_anchor=(0.5, 0.9),
-          ncol=3, fancybox=True, shadow=True)
+    axes[2].legend(fancybox=True, shadow=True)
+
     return fig, axes
 
 
@@ -340,6 +329,7 @@ plot_forces_over_time(
     ], 
     weights=weights
 )
+plt.tight_layout()
 
 plot_errors_over_time(
     (force_hf, force_pulay_exact_pq), 
@@ -358,7 +348,9 @@ plot_errors_over_time(
     ], 
     weights=weights
 )
+plt.tight_layout()
 
 plot_force_data_trace(force_hf, force_pulay_exact_pq, force_hf_warp, force_pulay_exact_warp_pq_approx)
+plt.tight_layout()
 
 plt.show()
