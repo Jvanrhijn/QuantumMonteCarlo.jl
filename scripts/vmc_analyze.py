@@ -102,8 +102,8 @@ def plot_forces_over_time(*forces, labels=[], weights=None, npoints=50):
 
     fig, axes = plt.subplots(nrows=1, ncols=3, figsize=(15, 5), sharey=False)
 
-    #axes[2].plot(ns, [3.43196]*len(ns), label="Exact", color="black", linestyle='--')
-    axes[2].plot(ns, [2.5]*len(ns), label="Exact", color="black", linestyle='--')
+    axes[2].plot(ns, [3.43196]*len(ns), label="Exact", color="black", linestyle='--')
+    #axes[2].plot(ns, [2.5]*len(ns), label="Exact", color="black", linestyle='--')
     axes[0].set_ylabel("Force")
 
     for i, (fhf, fp) in enumerate(forces):
@@ -181,7 +181,7 @@ def compute_forces(fpath):
     el_times_psilogderiv = data["Local energy * grad log psi"][()][1:]
     el_times_psilogderiv_warp = data["Local energy * grad log psi (warp)"][()][1:]
 
-    warpfacs = [0.02, 0.04, 0.06, 0.08, 0.1, 0.2, 0.4, 0.6, 0.8, 1.0][4:]
+    warpfacs = [0.02, 0.04, 0.06, 0.08, 0.1, 0.2, 0.4, 0.6, 0.8, 1.0]
     force_pulay_pathaks = []
     force_hf_warp_approxs = []
     force_pulay_warp_approxs = []
@@ -363,14 +363,14 @@ print(f"Exact force:                                  {3.43196:.5f}")
 
 
 plot_forces_over_time(
-    (force_hf, force_pulay_), 
+    #(force_hf, force_pulay_), 
     #(force_hf_pathak, force_pulay_pathak), 
-    (force_hf_warp, force_pulay__warp), 
+    #(force_hf_warp, force_pulay__warp), 
     #(force_hf_warp, force_pulay__warp_approx), 
     #(force_hf, force_pulay_exact), 
     #(force_hf_warp, force_pulay_exact_warp), 
-    #(force_hf, force_pulay_exact_pq), 
-    #(force_hf_warp, force_pulay_exact_warp_pq), 
+    (force_hf, force_pulay_exact_pq), 
+    (force_hf_warp, force_pulay_exact_warp_pq), 
     #(force_hf_warp, force_pulay_exact_warp_pq_approx), 
     labels=[
         "Not warped",  
@@ -388,14 +388,14 @@ plot_forces_over_time(
 plt.tight_layout()
 
 plot_errors_over_time(
-    (force_hf, force_pulay_), 
+    #(force_hf, force_pulay_), 
     #(force_hf_pathak, force_pulay_pathak), 
-    (force_hf_warp, force_pulay__warp), 
+    #(force_hf_warp, force_pulay__warp), 
     #(force_hf_warp, force_pulay__warp_approx), 
     #(force_hf, force_pulay_exact), 
     #(force_hf_warp, force_pulay_exact_warp), 
-    #(force_hf, force_pulay_exact_pq), 
-    #(force_hf_warp, force_pulay_exact_warp_pq), 
+    (force_hf, force_pulay_exact_pq), 
+    (force_hf_warp, force_pulay_exact_warp_pq), 
     #(force_hf_warp, force_pulay_exact_warp_pq_approx), 
     labels=[
         "Not warped", 
@@ -435,7 +435,7 @@ lin = lambda x, a, b: a*x + b
 plt.plot([0, max(warpfacs)], [3.43196]*2, "black", linestyle="--")
 #plt.plot([0, max(warpfacs)], [2.5]*2, "black")
 plt.xlim(0)
-plt.xlabel("Cutoff scale")
+plt.xlabel("Normalized cutoff scale")
 plt.ylabel("Force estimate")
 plt.grid()
 plt.legend()

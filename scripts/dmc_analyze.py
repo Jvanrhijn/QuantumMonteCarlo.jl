@@ -100,7 +100,8 @@ def plot_forces_over_time(*forces, labels=[], weights=None, npoints=50):
     ns = np.linspace(1, len(forces[0][0]), npoints)
 
     fig, axes = plt.subplots(nrows=1, ncols=3, figsize=(15, 5), sharey=False)
-    axes[2].plot(ns, [np.pi**2/4]*len(ns), label="Exact", color="black", linestyle="--")
+    #axes[2].plot(ns, [np.pi**2/4]*len(ns), label="Exact", color="black", linestyle="--")
+    axes[2].plot(ns, [3.3014]*len(ns), label="Exact", color="black", linestyle="--")
     axes[0].set_ylabel("Force")
 
     for i, (fhf, fp) in enumerate(forces):
