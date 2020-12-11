@@ -372,8 +372,8 @@ print(f"Exact force:                                  {3.43196:.5f}")
 
 plot_forces_over_time(
     (force_hf, force_pulay_), 
-    #(force_hf_pathak, force_pulay_pathak), 
     (force_hf_warp, force_pulay__warp), 
+    (force_hf_pathaks[-1], force_pulay_pathaks[-1]), 
     #(force_hf_warp, force_pulay__warp_approx), 
     #(force_hf, force_pulay_exact), 
     #(force_hf_warp, force_pulay_exact_warp), 
@@ -382,8 +382,8 @@ plot_forces_over_time(
     #(force_hf_warp, force_pulay_exact_warp_pq_approx), 
     labels=[
         "Not warped",  
-        #"Pathak", 
         "Warped", 
+        "Pathak", 
         #"Warped, approx. J", 
         #"Projector, naive",
         #"Projector, naive, warp",
@@ -397,8 +397,8 @@ plt.tight_layout()
 
 plot_errors_over_time(
     (force_hf, force_pulay_), 
-    #(force_hf_pathak, force_pulay_pathak), 
     (force_hf_warp, force_pulay__warp), 
+    (force_hf_pathaks[-1], force_pulay_pathaks[-1]), 
     #(force_hf_warp, force_pulay__warp_approx), 
     #(force_hf, force_pulay_exact), 
     #(force_hf_warp, force_pulay_exact_warp), 
@@ -407,8 +407,8 @@ plot_errors_over_time(
     #(force_hf_warp, force_pulay_exact_warp_pq_approx), 
     labels=[
         "Not warped", 
-        #"Pathak", 
         "Warped", 
+        "Pathak", 
         #"Warped, approx. J", 
         #"Projector, naive",
         #"Projector, naive, warp",
@@ -421,7 +421,8 @@ plot_errors_over_time(
 plt.tight_layout()
 
 
-plot_force_data_trace(force_hf, force_pulay_, force_hf_warp, force_pulay__warp)
+#plot_force_data_trace(force_hf, force_pulay_, force_hf_warp, force_pulay__warp)
+plot_force_data_trace(force_hf, force_pulay_, force_hf_pathaks[-1], force_pulay_pathaks[-1])
 plt.tight_layout()
 
 fs_pathak = np.array([np.average(fhf + fp, weights=weights) for (fhf, fp) in zip(force_hf_pathaks, force_pulay_pathaks)])

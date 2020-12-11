@@ -20,7 +20,7 @@ hamiltonian_recompute′(ψ, x) = -0.5*ψ.laplacian(x)
 include("forceutil_vmc.jl")
 
 # VMC settings
-τ = 5e-2
+τ = 1e-1
 nwalkers = 1
 num_blocks = 10000
 steps_per_block = 100
