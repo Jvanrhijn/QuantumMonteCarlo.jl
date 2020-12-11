@@ -102,8 +102,8 @@ def plot_forces_over_time(*forces, labels=[], weights=None, npoints=50):
 
     fig, axes = plt.subplots(nrows=1, ncols=3, figsize=(15, 5), sharey=False)
 
-    #axes[2].plot(ns, [3.43196]*len(ns), label="Exact", color="black", linestyle='--')
-    axes[2].plot(ns, [2.5]*len(ns), label="Exact", color="black", linestyle='--')
+    axes[2].plot(ns, [3.43196]*len(ns), label="Exact", color="black", linestyle='--')
+    #axes[2].plot(ns, [2.5]*len(ns), label="Exact", color="black", linestyle='--')
     axes[0].set_ylabel("Force")
 
     for i, (fhf, fp) in enumerate(forces):
@@ -181,7 +181,7 @@ def compute_forces(fpath):
     el_times_psilogderiv = data["Local energy * grad log psi"][()][1:]
     el_times_psilogderiv_warp = data["Local energy * grad log psi (warp)"][()][1:]
 
-    warpfacs = [0.02, 0.04, 0.06, 0.08, 0.1, 0.2, 0.4, 0.6, 0.8, 1.0][4:]
+    warpfacs = [0.02, 0.04, 0.06, 0.08, 0.1, 0.2, 0.4, 0.6, 0.8, 1.0]
     force_hf_pathaks = []
     force_pulay_pathaks = []
     force_hf_warp_approxs = []
