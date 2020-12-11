@@ -14,7 +14,6 @@ function local_energy_new(fwalker, model, eref, x′)
     model.hamiltonian_recompute(ψ, x) / ψ.value(x)
 end
 
-
 function cutoff_tanh(d; a=0.05)
     b = a/5
     value = 0.5 * (1 + tanh((a - d)/b))
@@ -28,7 +27,7 @@ function node_warp(x, ψ, ∇ψ, ψ′, ∇ψ′, τ; warpfac=1)
 
     n′ = ∇ψ′ / norm(∇ψ′)
     n = ∇ψ / norm(∇ψ)
-    u, uderiv = cutoff_tanh(d; a=0.25warpfac*sqrt(τ))
+    u, uderiv = cutoff_tanh(d; a=warpfac*sqrt(τ))
     x̅ = x .+ (d - d′) * u * sign(ψ′) * n′
    
     # approximate jacobian
@@ -42,7 +41,7 @@ function node_warp_exact_jacobian(x, ψ, ψ′, τ; warpfac=1)
     d′(y) = abs(ψ′.value(y)) / norm(ψ′.gradient(y))
     n′(y) = ψ′.gradient(y) / norm(ψ′.gradient(y))
 
-    warp(y::AbstractVector) = y + (d(y) - d′(y)) * n′(y) * sign(ψ′.value(y)) * cutoff_tanh(d(y), a=0.25warpfac*sqrt(τ))[1]
+    warp(y::AbstractVector) = y + (d(y) - d′(y)) * n′(y) * sign(ψ′.value(y)) * cutoff_tanh(d(y), a=warpfac*sqrt(τ))[1]
 
     x̅ = warp(x)
 
@@ -78,7 +77,7 @@ function local_energy_gradient(fwalker, model, eref, x′, ψt′, τ; warp=fals
     return ∇ₐel
 end
 
-function local_energy_gradient_pathak(fwalker, model, eref, x′, ψt′, τ; warp=false, ϵ=1e-1)
+function local_energy_gradient_pathak(fwalker, model, eref, x′, ψt′, τ; ϵ=1e-1)
     walker = fwalker.walker
     x = walker.configuration
     ψ = model.wave_function
@@ -88,11 +87,7 @@ function local_energy_gradient_pathak(fwalker, model, eref, x′, ψt′, τ; wa
 
     local_e(x) = model.hamiltonian_recompute(ψ, x) / ψ.value(x)
 
-    if warp
-        x̅, _ = node_warp(x, ψ.value(x), ∇ψ(x), ψ′.value(x), ∇ψ′(x), τ)
-    else
-        x̅ = x
-    end
+    x̅ = x
 
     el = model.hamiltonian_recompute(ψ, x) / ψ.value(x)
     el′ = hamiltonian_recompute′(ψt′, x̅) / ψt′.value(x̅)

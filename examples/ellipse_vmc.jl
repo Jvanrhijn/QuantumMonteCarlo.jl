@@ -20,10 +20,10 @@ hamiltonian_recompute′(ψ, x) = -0.5*ψ.laplacian(x)
 include("forceutil_vmc.jl")
 
 # VMC settings
-τ = 5e-2
+τ = 1e-1
 nwalkers = 1
 num_blocks = 10000
-steps_per_block = 1000
+steps_per_block = 100
 neq = num_blocks ÷ 10
 neq = 1
 lag = #trunc(Int64, steps_per_block)
@@ -66,10 +66,11 @@ warp_factors = [0.02, 0.04, 0.06, 0.08, 0.1, 0.2, 0.4, 0.6, 0.8, 1.0]
 approximate_warp_functions = [
 			      [
 			       "grad el (warp) ($wf)" => (fwalker, model, eref, xp) -> local_energy_gradient(fwalker, model, eref, xp, ψtrial′, τ; warp=true, warpfac=wf),
+			       "grad el pathak ($wf)" => (fwalker, model, eref, xp) -> local_energy_gradient_pathak(fwalker, model, eref, xp, ψtrial′, τ; ϵ=wf*0.25*√τ),
 			       "grad log psi (warp) ($wf)" => (fwalker, model, eref, xp) -> log_psi_gradient(fwalker, model, eref, xp, ψtrial′, τ; warp=true, warpfac=wf),
 			       "grad log j ($wf)" => (fwalker, model, eref, xp) -> jacobian_gradient_current(fwalker, model, eref, xp, ψtrial′, τ, warpfac=wf),
 			       "grad log j approx ($wf)" => (fwalker, model, eref, xp) -> jacobian_gradient_current_approx(fwalker, model, eref, xp, ψtrial′, τ, warpfac=wf),
-			       "grad log psi pathak ($wf)" => (fwalker, model, eref, xp) -> log_psi_gradient_pathak(fwalker, model, eref, xp, ψtrial′, τ; ϵ=0.1wf),
+			       "grad log psi pathak ($wf)" => (fwalker, model, eref, xp) -> log_psi_gradient_pathak(fwalker, model, eref, xp, ψtrial′, τ; ϵ=wf*0.25*√τ),
 			       ] for wf in warp_factors
 ]
 
