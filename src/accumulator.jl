@@ -90,16 +90,16 @@ function average_block!(accumulator)
 end
 
 function write_to_file!(accumulator, file)
-    g = HDF5.root(file)
+    g = root(file)
     for (key, value) in accumulator.block_averages
         # if dataset doesn't exist yet, create it
-        if !HDF5.exists(g, key)
-            HDF5.d_create(g, key, Float64, ((1, size(value)...), (-1, size(value)...)), "chunk", (1,size(value)...))
+        if !exists(g, key)
+            d_create(g, key, Float64, ((1, size(value)...), (-1, size(value)...)), "chunk", (1,size(value)...))
         end
-        dset = HDF5.d_open(g, key)
-        dim = HDF5.size(dset)
+        dset = d_open(g, key)
+        dim = size(dset)
         new_dim = (dim[1]+1, dim[2:end]...)
-        HDF5.set_dims!(dset, new_dim)
+        set_dims!(dset, new_dim)
         dset[end] = value
     end
 
