@@ -17,7 +17,7 @@ function diffuse_walker!(walker, τ, ψ, rng::AbstractRNG)
     # expression taken from https://en.wikipedia.org/wiki/Metropolis-adjusted_Langevin_algorithm
     # with π(x) = ψ(x)², so ∇log(π) = 2∇log(ψ) = 2∇ψ/ψ.
     # add drift towards nodes
-    n = ψval / norm(∇ψ)
+    n = ∇ψ / norm(∇ψ)
     Δx = -n*τ.+ v*τ .+ √τ * randn(rng, Float64, size(x))
     x′ = x .+ Δx
 
