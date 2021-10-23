@@ -90,7 +90,7 @@ function average_block!(accumulator)
 end
 
 function write_to_file!(accumulator, file)
-    g = root(file)
+    g = HDF5.root(file)
     for (key, value) in accumulator.block_averages
         # if dataset doesn't exist yet, create it
         if !exists(g, key)
