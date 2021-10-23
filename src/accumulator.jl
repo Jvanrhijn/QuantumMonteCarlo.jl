@@ -93,7 +93,7 @@ function write_to_file!(accumulator, file)
     g = root(file)
     for (key, value) in accumulator.block_averages
         # if dataset doesn't exist yet, create it
-        if !haskey(g, key)
+        if !exists(g, key)
             d_create(g, key, Float64, ((1, size(value)...), (-1, size(value)...)), "chunk", (1,size(value)...))
         end
         dset = d_open(g, key)
