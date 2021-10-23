@@ -93,13 +93,13 @@ function write_to_file!(accumulator, file)
     g = HDF5.root(file)
     for (key, value) in accumulator.block_averages
         # if dataset doesn't exist yet, create it
-        if !exists(g, key)
-            d_create(g, key, Float64, ((1, size(value)...), (-1, size(value)...)), "chunk", (1,size(value)...))
+        if !HDF5.exists(g, key)
+            HDF5.d_create(g, key, Float64, ((1, size(value)...), (-1, size(value)...)), "chunk", (1,size(value)...))
         end
-        dset = d_open(g, key)
-        dim = size(dset)
+        dset = HDF5.d_open(g, key)
+        dim = HDF5.size(dset)
         new_dim = (dim[1]+1, dim[2:end]...)
-        set_dims!(dset, new_dim)
+        HDF5.set_dims!(dset, new_dim)
         dset[end] = value
     end
 
